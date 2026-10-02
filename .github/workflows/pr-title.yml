@@ -1,0 +1,16 @@
+# Pull requests are squash-merged, so the title becomes the commit on main: it must be a Conventional Commit.
+#
+# The check itself lives in Software Factory's repository and is called at a pinned commit, so this repository
+# and that one keep the same rule, and a change here cannot loosen it.
+name: pr-title
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  title:
+    uses: mrogan/cv-software-factory/.github/workflows/pr-title.yml@272702a3f4d3a23f73b28d6715ea48047b0e6cbb # main
