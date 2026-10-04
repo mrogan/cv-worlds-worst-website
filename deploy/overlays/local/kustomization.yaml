@@ -6,5 +6,5 @@ resources:
   - ingress.yaml
 
 components:
-  # The image CI built last, pinned by digest. The build workflow edits only this file, in a pull request.
+  # The image CI built last, pinned by digest. The factory's App edits only this file, in a pull request.
   - image
