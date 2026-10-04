@@ -30,6 +30,9 @@ concurrency:
 
 env:
   IMAGE: ghcr.io/${{ github.repository }}
+  # Marks a deploy pull request apart from the release pull request and Martin's own. The factory's
+  # scripts/github-settings.ts makes it.
+  DEPLOY_LABEL: 'deploy: local'
 
 jobs:
   image:
@@ -122,7 +125,7 @@ jobs:
 
           Opened by the [build workflow]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID). A newer build replaces this pull request's change."
           if gh pr view "$BRANCH" --json state --jq .state | grep -q OPEN; then
-            gh pr edit "$BRANCH" --title "$title" --body "$body"
+            gh pr edit "$BRANCH" --title "$title" --body "$body" --add-label "$DEPLOY_LABEL"
           else
-            gh pr create --head "$BRANCH" --title "$title" --body "$body"
+            gh pr create --head "$BRANCH" --title "$title" --body "$body" --label "$DEPLOY_LABEL"
           fi
