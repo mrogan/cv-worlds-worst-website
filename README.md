@@ -47,7 +47,7 @@ To run it on Kubernetes beside the factory, with its telemetry in Grafana, follo
 
 ## How changes land
 
-The same way as in the factory's own repository, and enforced by the same settings: pull requests only, squash-merged once the required checks pass, signed and linear history, Actions pinned to full commit SHAs with minimal permissions. The title check, CodeQL and Scorecard are [called from Software Factory's repository](.github/workflows) at a pinned commit, so a change here cannot loosen them.
+The same way as in the factory's own repository, and enforced by the same settings: pull requests only, squash-merged once the required checks pass (a release or deploy pull request a workflow opened, unchanged, builds no image; a deploy instead checks that the image it pins was built from `main`), signed and linear history, Actions pinned to full commit SHAs with minimal permissions. The title check, CodeQL and Scorecard are [called from Software Factory's repository](.github/workflows) at a pinned commit, so a change here cannot loosen them.
 
 CI builds the image and opens a pull request that pins its digest in `deploy/`; merging that pull request is the deployment.
 
