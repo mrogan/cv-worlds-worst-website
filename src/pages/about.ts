@@ -23,6 +23,7 @@ export const aboutRoute: Route = {
         </p>
 
         <h2>The garage</h2>
+        <img src="/assets/drawings/doorstop.svg" width="120" height="120">
         <p>
           The shop is the garage at 4 Viaduct Lane. The car is kept on the drive. Every item is checked each quarter of
           an hour, to be sure it is still there, and dusted on a Tuesday, except for one. Gerald records all of this in
