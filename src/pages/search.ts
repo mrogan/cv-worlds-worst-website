@@ -9,7 +9,7 @@ export function searchRoute(catalogue: Catalogue): Route {
     method: 'GET',
     path: '/search',
     handle({ url }) {
-      const query = decodeURIComponent(url.searchParams.get('q') ?? '').trim();
+      const query = (url.searchParams.get('q') ?? '').trim();
       const products = catalogue.search(query);
 
       return page(200, {

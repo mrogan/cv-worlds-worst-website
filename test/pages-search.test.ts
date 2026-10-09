@@ -40,4 +40,23 @@ describe('the search page', () => {
     expect(body).not.toContain('<script>alert(1)</script>');
     expect(body).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
   });
+
+  it('takes a literal percent sign', async () => {
+    const { status, body } = await shop.get('/search?q=100%25');
+    expect(status).toBe(200);
+    expect(tags(body, 'input').find((input) => input.attributes.name === 'q')?.attributes.value).toBe('100%');
+    expect(tags(body, 'h2')[0]?.text).toBe('One item matches “100%”');
+  });
+
+  it('takes a percent sequence that is not valid encoding', async () => {
+    const { status, body } = await shop.get('/search?q=%25E0%25A4%25A');
+    expect(status).toBe(200);
+    expect(tags(body, 'h2')[0]?.text).toBe('Nothing matches “%E0%A4%A”');
+  });
+
+  it('decodes the query once', async () => {
+    const { status, body } = await shop.get('/search?q=%2541');
+    expect(status).toBe(200);
+    expect(tags(body, 'h2')[0]?.text).toBe('Nothing matches “%41”');
+  });
 });
