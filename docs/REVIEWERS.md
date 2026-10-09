@@ -14,3 +14,5 @@ the shop is bad on purpose, and only the ticket's fault is in scope.
    formatting happens once, at the edge. (`src/money.ts`)
 5. **Nothing new to install.** The shop runs on Node's own modules. A new runtime dependency, or
    a framework in disguise, is a finding.
+6. **Only the ticket.** Hold the spec to the ticket as well as the diff to the spec. A criterion
+   or a change the ticket does not ask for is blocking, and goes to Martin.
