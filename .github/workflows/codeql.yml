@@ -19,4 +19,4 @@ jobs:
     permissions:
       contents: read
       security-events: write
-    uses: mrogan/cv-software-factory/.github/workflows/codeql.yml@272702a3f4d3a23f73b28d6715ea48047b0e6cbb # main
+    uses: mrogan/cv-software-factory/.github/workflows/codeql.yml@8ecdfb4fc958e069a0b1db7300d698489caabbf8 # main
