@@ -19,8 +19,8 @@ spec:
         traefik:
           weightedTraefikServiceName: website
       # The canary is judged against the version it replaces, by the analysis the factory's repository keeps (its
-      # policy/release.ts): errors and latency throughout, and at the end of each step errors, latency and the
-      # journeys, with enough requests to judge. A failed analysis rolls the release back. The two hashes tell the
+      # policy/release.ts): errors, latency and the journeys, throughout and again at the end of each step, which must
+      # also have had enough requests to judge. A failed analysis rolls the release back. The two hashes tell the
       # versions' telemetry apart.
       analysis:
         templates:
