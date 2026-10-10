@@ -49,6 +49,6 @@ To run it on Kubernetes beside the factory, with its telemetry in Grafana, follo
 
 The same way as in the factory's own repository, and enforced by the same settings: pull requests only, squash-merged once the required checks pass (a release or deploy pull request the factory's App opened, unchanged, builds no image; a deploy instead checks that the image it pins was built from `main`), signed and linear history, Actions pinned to full commit SHAs with minimal permissions. The title check, CodeQL and Scorecard are [called from Software Factory's repository](.github/workflows) at a pinned commit, so a change here cannot loosen them.
 
-CI builds the image; the factory's GitHub App sees it and opens a pull request that pins its digest in `deploy/`. Merging that pull request is the deployment.
+CI builds the image; the factory's GitHub App sees it and opens a pull request that pins its digest in `deploy/`. Merging that pull request is the deployment: Argo Rollouts releases the new image as a canary beside the version it replaces, with a quarter of the traffic for three minutes, then half for three, then all of it.
 
 [MIT licence](LICENSE)

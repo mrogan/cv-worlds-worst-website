@@ -9,5 +9,8 @@ labels:
       app.kubernetes.io/part-of: worlds-worst-website
     includeSelectors: true
 resources:
-  - deployment.yaml
+  - rollout.yaml
   - service.yaml
+  - traffic-split.yaml
+configurations:
+  - kustomizeconfig.yaml
