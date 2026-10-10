@@ -1,6 +1,7 @@
 # The shop, released as a canary by Argo Rollouts. A new image starts beside the version it replaces, takes a quarter
-# of the traffic, then half, then all of it; at any step it can be rolled back, and the stable version takes it all
-# again. Traefik splits the traffic (traffic-split.yaml), with weights Argo Rollouts sets.
+# of the traffic, then half, then all of it, and goes on from each step only if the analysis passes; if it fails, the
+# release is rolled back, and the stable version takes it all again. Traefik splits the traffic (traffic-split.yaml),
+# with weights Argo Rollouts sets.
 #
 # Meets the restricted Pod Security Standard: non-root, no privilege escalation, no capabilities.
 apiVersion: argoproj.io/v1alpha1
@@ -17,11 +18,42 @@ spec:
       trafficRouting:
         traefik:
           weightedTraefikServiceName: website
+      # The canary is judged against the version it replaces, by the analysis the factory's repository keeps (its
+      # policy/release.ts): errors and latency throughout, and at the end of each step errors, latency and the
+      # journeys, with enough requests to judge. A failed analysis rolls the release back. The two hashes tell the
+      # versions' telemetry apart.
+      analysis:
+        templates:
+          - templateName: website-background
+            clusterScope: true
+        args:
+          - name: stable-hash
+            valueFrom: { podTemplateHashValue: Stable }
+          - name: canary-hash
+            valueFrom: { podTemplateHashValue: Latest }
       steps:
         - setWeight: 25
         - pause: { duration: 3m }
+        - analysis:
+            templates:
+              - templateName: website-step
+                clusterScope: true
+            args:
+              - name: stable-hash
+                valueFrom: { podTemplateHashValue: Stable }
+              - name: canary-hash
+                valueFrom: { podTemplateHashValue: Latest }
         - setWeight: 50
         - pause: { duration: 3m }
+        - analysis:
+            templates:
+              - templateName: website-step
+                clusterScope: true
+            args:
+              - name: stable-hash
+                valueFrom: { podTemplateHashValue: Stable }
+              - name: canary-hash
+                valueFrom: { podTemplateHashValue: Latest }
   template:
     spec:
       automountServiceAccountToken: false
