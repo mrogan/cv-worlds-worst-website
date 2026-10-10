@@ -1,10 +1,27 @@
+# The shop, released as a canary by Argo Rollouts. A new image starts beside the version it replaces, takes a quarter
+# of the traffic, then half, then all of it; at any step it can be rolled back, and the stable version takes it all
+# again. Traefik splits the traffic (traffic-split.yaml), with weights Argo Rollouts sets.
+#
 # Meets the restricted Pod Security Standard: non-root, no privilege escalation, no capabilities.
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: website
 spec:
   replicas: 1
+  strategy:
+    canary:
+      # Argo Rollouts points each Service at its version's pods, by their rollouts-pod-template-hash label.
+      stableService: website
+      canaryService: website-canary
+      trafficRouting:
+        traefik:
+          weightedTraefikServiceName: website
+      steps:
+        - setWeight: 25
+        - pause: { duration: 3m }
+        - setWeight: 50
+        - pause: { duration: 3m }
   template:
     spec:
       automountServiceAccountToken: false
