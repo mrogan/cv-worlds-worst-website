@@ -2,7 +2,6 @@
  * The shop's HTTP handler: security headers, the routes, the files in public/, `/health` and `/version`.
  */
 import type { IncomingMessage, RequestListener, ServerResponse } from 'node:http';
-import { setTimeout as sleep } from 'node:timers/promises';
 import { context } from '@opentelemetry/api';
 import { getRPCMetadata, RPCType } from '@opentelemetry/core';
 import type { Asset } from './assets.ts';
@@ -31,17 +30,8 @@ const SECURITY_HEADERS = {
 /** Forms and reports are a few hundred bytes. Anything much larger is not for us. */
 const MAX_BODY_BYTES = 16 * 1024;
 
-/**
- * A drill for the canary (Software Factory's milestone 6, Part A, task 6), to be reverted once it has run: every
- * request but `/health` and `/version` waits its turn behind one lock, and holds it for at least this long, until its
- * response has gone. Alone, a request is this much slower, which no probe notices; under load, each waits for every
- * request ahead of it, and a page's own files queue in front of the next visitor's page.
- */
-const HOLD_MS = 40;
-
 export function createApp({ commit, assets, routes, notFound, failed }: AppOptions): RequestListener {
   const version = JSON.stringify({ commit });
-  const oneAtATime = lock();
 
   return async (req, res) => {
     const started = performance.now();
@@ -63,12 +53,6 @@ export function createApp({ commit, assets, routes, notFound, failed }: AppOptio
 
     if (path === '/health') return send(req, res, { status: 200, type: JSON_TYPE, body: '{"status":"ok"}' });
     if (path === '/version') return send(req, res, { status: 200, type: JSON_TYPE, body: version });
-
-    // Released when the response has gone, or the client has, even while it is still waiting for its turn.
-    const turn = oneAtATime();
-    res.once('close', () => void turn.then((release) => release()));
-    await turn;
-    await sleep(HOLD_MS);
 
     const asset = method === 'GET' ? assets.get(path) : undefined;
     if (asset) {
@@ -117,20 +101,6 @@ export function createApp({ commit, assets, routes, notFound, failed }: AppOptio
         path.startsWith('/api/') ? json(500, { error: 'Something went wrong at our end.' }) : failed(request),
       );
     }
-  };
-}
-
-/** Gives each caller its turn once the one before has released it: awaiting it gives the function that releases it. */
-function lock(): () => Promise<() => void> {
-  let last = Promise.resolve();
-  return () => {
-    let release = () => {};
-    const held = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    const turn = last.then(() => release);
-    last = last.then(() => held);
-    return turn;
   };
 }
 
