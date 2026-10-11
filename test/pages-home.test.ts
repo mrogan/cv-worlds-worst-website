@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { log } from '../src/log.ts';
 import { linksOf, tags, textOf } from './support/html.ts';
 import { useShop } from './support/shop.ts';
 
@@ -29,5 +30,29 @@ describe('the home page', () => {
     const { body } = await shop.get('/');
     expect(textOf(body)).toContain('There is no basket.');
     expect(linksOf(body)).toContain('/contact');
+  });
+
+  describe('logging', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+
+    it('serves the welcome page and logs no error', async () => {
+      const error = vi.spyOn(log, 'error');
+      const { status, body } = await shop.get('/');
+      expect(status).toBe(200);
+      expect(textOf(body)).toContain('Welcome');
+      expect(error).not.toHaveBeenCalled();
+    });
+
+    it.each(Array.from({ length: 24 }, (_, hour) => hour))('logs no error at hour %i', async (hour) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 0, 15, hour, 30));
+      const error = vi.spyOn(log, 'error');
+      const { status } = await shop.get('/');
+      expect(status).toBe(200);
+      expect(error).not.toHaveBeenCalled();
+    });
   });
 });
