@@ -12,6 +12,7 @@ import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { PinoInstrumentation } from '@opentelemetry/instrumentation-pino';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
+import { measured } from './measured.ts';
 
 // ES modules are patched through a loader hook, which has to be registered before they are imported.
 register('@opentelemetry/instrumentation/hook.mjs', import.meta.url);
@@ -20,8 +21,8 @@ const sdk = new NodeSDK({
   serviceName: process.env.OTEL_SERVICE_NAME ?? 'website',
   resource: resourceFromAttributes({ 'service.version': process.env.GIT_COMMIT ?? 'dev' }),
   instrumentations: [
-    // Probes hit /health every few seconds; a span for each would bury the requests that matter.
-    new HttpInstrumentation({ ignoreIncomingRequestHook: (req) => req.url === '/health' }),
+    // An ignored request has no span and is left out of the request metrics.
+    new HttpInstrumentation({ ignoreIncomingRequestHook: (req) => !measured(req) }),
     new PinoInstrumentation(),
   ],
 });
