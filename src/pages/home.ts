@@ -1,14 +1,30 @@
 import type { Catalogue } from '../catalogue.ts';
 import { html } from '../html.ts';
 import type { Route } from '../http.ts';
+import { log } from '../log.ts';
 import { productCards } from './cards.ts';
 import { page } from './layout.ts';
+
+/**
+ * A drill for the factory's reopening of a verified ticket (Software Factory's milestone 6, Part B), to be reverted once
+ * it has run: every hundredth visit to the home page logs an error, while the page answers as before.
+ */
+const EVERY = 100;
+let visits = 0;
 
 export function homeRoute(catalogue: Catalogue): Route {
   return {
     method: 'GET',
     path: '/',
     handle: () => {
+      visits += 1;
+      if (visits % EVERY === 0) {
+        const err = new Error("This week's sundries could not be dated");
+        log.error(
+          { event: 'error', err, method: 'GET', path: '/', route: '/' },
+          "GET / could not date this week's sundries",
+        );
+      }
       return page(200, {
         title: 'Welcome',
         path: '/',
