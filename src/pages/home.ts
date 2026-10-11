@@ -1,4 +1,5 @@
 import type { Catalogue } from '../catalogue.ts';
+import { lookForGreeting } from '../greeting.ts';
 import { html } from '../html.ts';
 import type { Route } from '../http.ts';
 import { productCards } from './cards.ts';
@@ -9,6 +10,7 @@ export function homeRoute(catalogue: Catalogue): Route {
     method: 'GET',
     path: '/',
     handle: () => {
+      lookForGreeting();
       return page(200, {
         title: 'Welcome',
         path: '/',
