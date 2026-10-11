@@ -1,8 +1,10 @@
 import fs from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createCatalogue } from '../src/catalogue.ts';
 import { log } from '../src/log.ts';
+import { homeRoute } from '../src/pages/home.ts';
 import { linksOf, tags, textOf } from './support/html.ts';
-import { useShop } from './support/shop.ts';
+import { useDatabase, useShop } from './support/shop.ts';
 
 // The config silences the loggers; they read the level when they are made, so raise it before the shop is imported.
 vi.hoisted(() => {
@@ -10,6 +12,7 @@ vi.hoisted(() => {
 });
 
 const shop = useShop();
+const held = useDatabase();
 
 describe('the home page', () => {
   it('lists the departments, each with its blurb', async () => {
@@ -91,6 +94,36 @@ describe('the home page', () => {
       expect(status).toBe(200);
       expect(textOf(body)).toContain('Welcome');
       expect(error).not.toHaveBeenCalled();
+    });
+
+    it('logs no error over 250 visits, including the 100th and 200th', async () => {
+      const error = vi.spyOn(log, 'error');
+      const route = homeRoute(createCatalogue(held.db));
+      const request = {
+        url: new URL('http://shop.test/'),
+        params: {},
+        body: Buffer.alloc(0),
+        contentType: '',
+        client: 'test',
+      };
+      for (let visit = 1; visit <= 250; visit += 1) {
+        const reply = await route.handle(request);
+        expect(reply.status).toBe(200);
+        if (visit === 100) {
+          expect(textOf(String(reply.body))).toContain('Welcome');
+          expect(textOf(String(reply.body))).toContain('Thing, number 1');
+        }
+      }
+      expect(error).not.toHaveBeenCalled();
+    });
+
+    it('logs no error line to stdout over 250 visits over HTTP', async () => {
+      const errors = captureStdout();
+      for (let visit = 1; visit <= 250; visit += 1) {
+        const { status } = await shop.get('/');
+        expect(status).toBe(200);
+      }
+      expect(errors()).toEqual([]);
     });
 
     it.each(Array.from({ length: 24 }, (_, hour) => hour))('logs no error at hour %i', async (hour) => {
