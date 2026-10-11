@@ -1,15 +1,33 @@
 import type { Catalogue } from '../catalogue.ts';
 import { html } from '../html.ts';
 import type { Route } from '../http.ts';
+import { log } from '../log.ts';
 import { productCards } from './cards.ts';
 import { page } from './layout.ts';
+
+/**
+ * A drill for the factory's Verify (Software Factory's milestone 6, Part B), to be reverted once it has run: each
+ * visit looks for a greeting for the hour, finds none, and logs that as an error, while the page answers as before.
+ */
+const GREETINGS: Record<number, string> = {};
+
+function greeting(): string {
+  const chosen = GREETINGS[new Date().getHours()];
+  if (!chosen) throw new Error('No greeting is set for this hour');
+  return chosen;
+}
 
 export function homeRoute(catalogue: Catalogue): Route {
   return {
     method: 'GET',
     path: '/',
-    handle: () =>
-      page(200, {
+    handle: () => {
+      try {
+        greeting();
+      } catch (err) {
+        log.error({ event: 'error', err, method: 'GET', path: '/', route: '/' }, 'GET / found no greeting');
+      }
+      return page(200, {
         title: 'Welcome',
         path: '/',
         body: html`<h1>Welcome</h1>
@@ -43,6 +61,7 @@ export function homeRoute(catalogue: Catalogue): Route {
             There is no basket. To buy something, <a href="/contact">write to us</a> with its item number and Gerald
             will set it aside. A basket is phase two.
           </p>`,
-      }),
+      });
+    },
   };
 }
