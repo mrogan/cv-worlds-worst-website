@@ -30,6 +30,12 @@ describe('the search page', () => {
     expect(textOf(body)).toContain('We have noted the gap in our range.');
   });
 
+  it('ignores letter case in the query', async () => {
+    const { body } = await shop.get('/search?q=LUCKY');
+    expect(tags(body, 'h2')[0]?.text).toBe('One item matches “LUCKY”');
+    expect(names(body)).toEqual(['Thing, number 7']);
+  });
+
   it('keeps the query in the box', async () => {
     const { body } = await shop.get('/search?q=lucky');
     expect(tags(body, 'input').find((input) => input.attributes.name === 'q')?.attributes.value).toBe('lucky');

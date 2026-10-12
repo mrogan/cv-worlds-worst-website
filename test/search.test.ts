@@ -25,6 +25,19 @@ describe('search', () => {
     expect(search('100%')).toEqual([7]);
   });
 
+  it('ignores letter case, in the query and in the text', () => {
+    expect(search('NUMBER 21')).toEqual([21, 2]);
+    expect(search('LUCKY')).toEqual([7]);
+    expect(search('lUcKy')).toEqual([7]);
+  });
+
+  it('treats * and ? as the characters they are, in any case', () => {
+    expect(search('*')).toEqual([]);
+    expect(search('?')).toEqual([]);
+    expect(search('NUMBER *')).toEqual([]);
+    expect(search('LUCKY?')).toEqual([]);
+  });
+
   it('is not troubled by quotes', () => {
     expect(search("'; DROP TABLE products; --")).toEqual([]);
     expect(search('number 30')).toEqual([30]);
