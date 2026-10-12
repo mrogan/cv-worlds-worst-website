@@ -7,6 +7,7 @@ import { getRPCMetadata, RPCType } from '@opentelemetry/core';
 import type { Asset } from './assets.ts';
 import { JSON_TYPE, json, matchPath, type Reply, type Request, type Route } from './http.ts';
 import { log } from './log.ts';
+import { measured } from './measured.ts';
 
 export interface AppOptions {
   /** The commit the running build was made from. */
@@ -41,7 +42,7 @@ export function createApp({ commit, assets, routes, notFound, failed }: AppOptio
     let routeName: string | undefined;
 
     res.on('finish', () => {
-      if (path === '/health' || path === '/contact') return;
+      if (!measured(req) || path === '/contact') return;
       const ms = Math.round(performance.now() - started);
       log.info(
         { event: 'request', method: req.method, path, route: routeName, status: res.statusCode, ms },

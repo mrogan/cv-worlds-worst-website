@@ -9,6 +9,14 @@ afterEach(() => vi.restoreAllMocks());
 const records = (spy: { mock: { calls: unknown[][] } }) => spy.mock.calls.map(([fields]) => fields);
 
 describe('the request log', () => {
+  it('has no record of a request from a monitoring client that asks not to be measured', async () => {
+    const info = vi.spyOn(log, 'info');
+    const response = await fetch(shop.url('/products/thing-3'), { headers: { 'x-unmeasured': '1' } });
+    expect(response.status).toBe(200);
+    await response.text();
+    expect(records(info)).toEqual([]);
+  });
+
   it('has one record for each request, with its route, status and time', async () => {
     const info = vi.spyOn(log, 'info');
     await shop.get('/products/thing-3');
