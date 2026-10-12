@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.1](https://github.com/mrogan/cv-worlds-worst-website/compare/v0.2.0...v0.2.1) (2026-10-12)
+
+
+### Bug Fixes
+
+* **app:** serve requests concurrently with no fixed hold ([#69](https://github.com/mrogan/cv-worlds-worst-website/issues/69)) ([94e8cce](https://github.com/mrogan/cv-worlds-worst-website/commit/94e8ccec5be230b4e12ba4d9bcdbe10d59578c60))
+* **contact:** accept capitals, plus tags and long TLDs in email ([#61](https://github.com/mrogan/cv-worlds-worst-website/issues/61)) ([64f6f0a](https://github.com/mrogan/cv-worlds-worst-website/commit/64f6f0ac9d0f5379e6036a5e0bc5a115d992f0c0))
+* **search:** match names, summaries and notes regardless of case ([#66](https://github.com/mrogan/cv-worlds-worst-website/issues/66)) ([6a9b3ee](https://github.com/mrogan/cv-worlds-worst-website/commit/6a9b3ee17eea8de5493ca06ca95b570b487fcc25))
+
 ## [0.2.0](https://github.com/mrogan/cv-worlds-worst-website/compare/v0.1.0...v0.2.0) (2026-10-12)
 
 
