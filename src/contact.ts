@@ -13,7 +13,7 @@ export const MAX_NAME_LENGTH = 100;
 export const MAX_MESSAGE_LENGTH = 2000;
 
 /** A name, an @, and a domain that ends the way domains do. */
-const EMAIL = /^[a-z0-9._-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,4}$/;
+const EMAIL = /^[a-z0-9._+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i;
 
 export function readContactForm(fields: URLSearchParams): ContactForm {
   return {

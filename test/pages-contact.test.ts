@@ -25,6 +25,12 @@ describe('the contact page', () => {
     expect(textOf(body)).toContain('Gerald reads every message, usually on a Thursday.');
   });
 
+  it('thanks a sender whose address has capitals, a plus tag and a long domain', async () => {
+    const { status, body } = await shop.post('/contact', { ...valid, email: 'ada+shop@Example.photography' });
+    expect(status).not.toBe(422);
+    expect(tags(body, 'h1')[0]?.text).toBe('Thank you');
+  });
+
   it('does not repeat the message back', async () => {
     expect((await shop.post('/contact', valid)).body).not.toContain('item 9');
   });

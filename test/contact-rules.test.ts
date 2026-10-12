@@ -28,6 +28,10 @@ describe('the contact form', () => {
     },
   );
 
+  it.each(['Ada@Example.org', 'ada+shop@example.org', 'ada@example.photography'])('accepts the address %s', (email) => {
+    expect(validateContactForm({ ...valid, email }).email).toBeUndefined();
+  });
+
   it('limits the length of a name and a message', () => {
     expect(validateContactForm({ ...valid, name: 'a'.repeat(MAX_NAME_LENGTH) })).toEqual({});
     expect(validateContactForm({ ...valid, name: 'a'.repeat(MAX_NAME_LENGTH + 1) }).name).toBeDefined();
