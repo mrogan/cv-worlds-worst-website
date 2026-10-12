@@ -1,6 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1alpha1
 kind: Component
 images:
-- digest: sha256:d7e387e14fb14fa8d7a4397df5ee0a633ed655cd0e6a612645df9a5811f38f27
+- digest: sha256:26bd218c533260910decf51798683af304ebfe870f4dba0094e3e839333063e3
   name: website
   newName: ghcr.io/mrogan/cv-worlds-worst-website
