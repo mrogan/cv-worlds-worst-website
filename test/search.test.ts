@@ -29,6 +29,8 @@ describe('search', () => {
     expect(search('NUMBER 21')).toEqual([21, 2]);
     expect(search('LUCKY')).toEqual([7]);
     expect(search('lUcKy')).toEqual([7]);
+    expect(search('thing, number 21')).toEqual([21]);
+    expect(search('thing')).toContain(21);
   });
 
   it('treats * and ? as the characters they are, in any case', () => {
