@@ -120,12 +120,13 @@ export function createCatalogue(db: Database): Catalogue {
       const words = text.trim();
       if (!words) return [];
       // GLOB treats *, ? and [ as wildcards; a customer typing them means the characters themselves.
-      const pattern = `*${words.replace(/[*?[]/g, (char) => `[${char}]`)}*`;
+      // GLOB is case-sensitive, so the text and the pattern are both lowered; brackets and wildcards are unaffected.
+      const pattern = `*${words.toLowerCase().replace(/[*?[]/g, (char) => `[${char}]`)}*`;
       return db.all<Product>(
         'products.search',
         `${PRODUCT}
-         WHERE p.name GLOB :pattern OR p.summary GLOB :pattern OR p.notes GLOB :pattern
-         ORDER BY (p.name GLOB :pattern) DESC, p.id`,
+         WHERE lower(p.name) GLOB :pattern OR lower(p.summary) GLOB :pattern OR lower(p.notes) GLOB :pattern
+         ORDER BY (lower(p.name) GLOB :pattern) DESC, p.id`,
         { pattern },
       );
     },
