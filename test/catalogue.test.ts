@@ -33,7 +33,11 @@ describe('a page of products', () => {
 
   it('starts with the lowest item number, in a department too', () => {
     expect(catalogue().page(1)?.products[0]?.id).toBe(1);
-    expect(catalogue().page(1, 'garden')?.products.map((p) => p.id)).toEqual([2, 5, 8, 11, 14, 17, 20, 23, 26, 29]);
+    expect(
+      catalogue()
+        .page(1, 'garden')
+        ?.products.map((p) => p.id),
+    ).toEqual([2, 5, 8, 11, 14, 17, 20, 23, 26, 29]);
   });
 
   it('starts page 2 right after the last product on page 1', () => {
