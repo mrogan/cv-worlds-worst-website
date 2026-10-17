@@ -31,6 +31,22 @@ describe('a page of products', () => {
     expect(page?.products.every((p) => p.department === 'garden')).toBe(true);
   });
 
+  it('starts with the lowest item number', () => {
+    const all = catalogue().page(1)?.products ?? [];
+    expect(all[0]?.id).toBe(Math.min(...all.map((p) => p.id)));
+    const garden = catalogue().page(1, 'garden')?.products ?? [];
+    expect(garden).toHaveLength(10);
+    expect(garden.map((p) => p.id)).toEqual([...garden.map((p) => p.id)].sort((x, y) => x - y));
+  });
+
+  it('carries on from the last product of the page before, skipping none', () => {
+    const c = catalogue();
+    const ids = [1, 2, 3].flatMap((n) => c.page(n)?.products.map((p) => p.id) ?? []);
+    expect(ids).toHaveLength(c.page(1)?.total ?? -1);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toEqual([...ids].sort((x, y) => x - y));
+  });
+
   it('is a single empty page for a department with nothing in it', () => {
     expect(catalogue().page(1, 'attic')).toMatchObject({ products: [], pages: 1, total: 0 });
   });
