@@ -31,6 +31,17 @@ describe('a page of products', () => {
     expect(page?.products.every((p) => p.department === 'garden')).toBe(true);
   });
 
+  it('starts with the lowest item number, in a department too', () => {
+    expect(catalogue().page(1)?.products[0]?.id).toBe(1);
+    expect(catalogue().page(1, 'garden')?.products.map((p) => p.id)).toEqual([2, 5, 8, 11, 14, 17, 20, 23, 26, 29]);
+  });
+
+  it('starts page 2 right after the last product on page 1', () => {
+    const first = catalogue().page(1)?.products ?? [];
+    expect(first.map((p) => p.id)).toEqual(Array.from({ length: 12 }, (_, i) => i + 1));
+    expect(catalogue().page(2)?.products[0]?.id).toBe(13);
+  });
+
   it('is a single empty page for a department with nothing in it', () => {
     expect(catalogue().page(1, 'attic')).toMatchObject({ products: [], pages: 1, total: 0 });
   });

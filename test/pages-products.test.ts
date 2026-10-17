@@ -36,6 +36,12 @@ describe('a department', () => {
     expect(await marked('/products')).toEqual(['Everything']);
   });
 
+  it("lists the department's lowest item number first", async () => {
+    const text = textOf((await shop.get('/products?department=garden')).body);
+    expect(text).toContain('Thing, number 2');
+    expect(text.indexOf('Thing, number 2')).toBeLessThan(text.indexOf('Thing, number 5'));
+  });
+
   it('answers 404 when there is no such department', async () => {
     expect((await shop.get('/products?department=attic')).status).toBe(404);
   });
