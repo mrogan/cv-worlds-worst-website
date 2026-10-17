@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/mrogan/cv-worlds-worst-website/compare/v0.2.1...v0.2.2) (2026-10-17)
+
+
+### Bug Fixes
+
+* **catalogue:** start each product page at the right offset ([#78](https://github.com/mrogan/cv-worlds-worst-website/issues/78)) ([d728dbe](https://github.com/mrogan/cv-worlds-worst-website/commit/d728dbe2c2bf390f596a32a9e444976d91e6358b))
+
 ## [0.2.1](https://github.com/mrogan/cv-worlds-worst-website/compare/v0.2.0...v0.2.1) (2026-10-12)
 
 
