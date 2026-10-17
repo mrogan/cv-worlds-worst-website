@@ -76,7 +76,7 @@ export function createCatalogue(db: Database): Catalogue {
         db.get<{ total: number }>('products.count', `SELECT COUNT(*) AS total ${FROM} ${filter}`, params)?.total ?? 0;
       const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
       if (!Number.isInteger(page) || page < 1 || page > pages) return undefined;
-      const offset = (page - 1) * PAGE_SIZE + 1;
+      const offset = (page - 1) * PAGE_SIZE;
 
       const products = db.all<Product>(
         'products.page',
