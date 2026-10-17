@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createCatalogue } from '../src/catalogue.ts';
+import { TEST_CATALOGUE } from './support/catalogue.ts';
 import { useDatabase } from './support/shop.ts';
 
 const held = useDatabase();
@@ -32,11 +33,12 @@ describe('a page of products', () => {
   });
 
   it('starts with the lowest item number', () => {
-    const all = catalogue().page(1)?.products ?? [];
-    expect(all[0]?.id).toBe(Math.min(...all.map((p) => p.id)));
+    const ids = (department?: string) =>
+      TEST_CATALOGUE.products.filter((p) => !department || p.department === department).map((p) => p.id);
+    expect(catalogue().page(1)?.products[0]?.id).toBe(Math.min(...ids()));
     const garden = catalogue().page(1, 'garden')?.products ?? [];
-    expect(garden).toHaveLength(10);
-    expect(garden.map((p) => p.id)).toEqual([...garden.map((p) => p.id)].sort((x, y) => x - y));
+    expect(garden[0]?.id).toBe(Math.min(...ids('garden')));
+    expect(garden.map((p) => p.id)).toEqual(ids('garden'));
   });
 
   it('carries on from the last product of the page before, skipping none', () => {
