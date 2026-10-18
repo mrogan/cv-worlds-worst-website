@@ -57,6 +57,30 @@ describe('the request log', () => {
     expect(records(info)).toMatchObject([{ event: 'request', path: '/no-such-page', status: 404 }]);
   });
 
+  it('records a visit to the contact page', async () => {
+    const info = vi.spyOn(log, 'info');
+    await shop.get('/contact');
+    expect(records(info)).toMatchObject([
+      { event: 'request', method: 'GET', path: '/contact', route: '/contact', status: 200 },
+    ]);
+  });
+
+  it('records a message sent from the contact page, beside the contact record', async () => {
+    const info = vi.spyOn(log, 'info');
+    await shop.post('/contact', { name: 'Ada', email: 'ada@example.org', message: 'Is item 9 still available?' });
+    expect(records(info)).toContainEqual(
+      expect.objectContaining({ event: 'request', path: '/contact', route: '/contact' }),
+    );
+    expect(records(info)).toContainEqual({ event: 'contact' });
+  });
+
+  it('has no record of an unmeasured request to the contact page', async () => {
+    const info = vi.spyOn(log, 'info');
+    const response = await fetch(shop.url('/contact'), { headers: { 'x-unmeasured': '1' } });
+    await response.text();
+    expect(records(info)).toEqual([]);
+  });
+
   it('leaves out health checks, which come every few seconds', async () => {
     const info = vi.spyOn(log, 'info');
     await shop.get('/health');

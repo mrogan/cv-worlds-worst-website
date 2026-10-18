@@ -42,7 +42,7 @@ export function createApp({ commit, assets, routes, notFound, failed }: AppOptio
     let routeName: string | undefined;
 
     res.on('finish', () => {
-      if (!measured(req) || path === '/contact') return;
+      if (!measured(req)) return;
       const ms = Math.round(performance.now() - started);
       log.info(
         { event: 'request', method: req.method, path, route: routeName, status: res.statusCode, ms },
