@@ -2,7 +2,7 @@
 #
 #     docker build --build-arg GIT_COMMIT=$(git rev-parse HEAD) .
 
-FROM node:24.21.0-alpine3.24@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS build
+FROM node:24.22.1-alpine3.24@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS build
 WORKDIR /app
 # pnpm at the version (and hash) pinned in package.json's packageManager field.
 RUN corepack enable
@@ -17,7 +17,7 @@ RUN node scripts/seed.ts
 # Readable by the unprivileged runtime user, and by nobody's writes.
 RUN chmod -R a+rX,go-w /app
 
-FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:59c479c9b8c123e66047315c968aa2d35e31ae5149c856e4110a79c8b3563f0b
+FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:78f07ef1b5ea71ad7c055df15d0dd8997f2d288f9158623c4d4ae3d765b7d50d
 COPY --from=build /app /app
 WORKDIR /app
 ARG GIT_COMMIT=unknown
