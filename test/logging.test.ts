@@ -108,3 +108,35 @@ describe('what visitors send', () => {
     expect(records(info)).toContainEqual({ event: 'contact' });
   });
 });
+
+describe('what the log never holds', () => {
+  const ADDRESS = '203.0.113.42';
+  const AGENT = 'Mozilla/5.0 (Thrumble; Parish Newsletter 7.1) Viaduct/31.0';
+  const headers = { 'x-forwarded-for': ADDRESS, 'user-agent': AGENT };
+
+  it('has no visitor’s address or browser, whatever the visitor does', async () => {
+    const spies = (['info', 'warn', 'error'] as const).map((level) => vi.spyOn(log, level));
+    const send = (path: string, init: RequestInit = {}) =>
+      fetch(shop.url(path), { ...init, headers: { ...headers, ...init.headers }, redirect: 'manual' }).then((r) =>
+        r.text(),
+      );
+
+    await send('/products/thing-3');
+    await send('/no-such-page');
+    await send('/api/reports', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: 'The clock is wrong.', page: '/products/clock-stopped' }),
+    });
+    await send('/report', { method: 'POST', body: new URLSearchParams({ text: 'Still wrong.', page: '/' }) });
+    await send('/contact', {
+      method: 'POST',
+      body: new URLSearchParams({ name: 'Ada', email: 'ada@example.org', message: 'Is item 9 still available?' }),
+    });
+
+    const logged = JSON.stringify(spies.flatMap((spy) => spy.mock.calls));
+    expect(logged).toContain('problem reported');
+    expect(logged).not.toContain(ADDRESS);
+    expect(logged).not.toMatch(/Thrumble|Viaduct\/31/);
+  });
+});
