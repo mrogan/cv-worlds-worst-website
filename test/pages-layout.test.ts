@@ -66,7 +66,12 @@ describe('every page', () => {
       await shop.post('/contact', {}),
       await shop.post('/report', { text: 'The clock is wrong.', page: '/' }),
       await shop.post('/report', { text: '', page: '/' }),
-      await shop.post('/api/reports', { text: 'The clock is wrong.', page: '/' }),
+      await fetch(shop.url('/api/reports'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text: 'The clock is wrong.', page: '/' }),
+      }),
+      await shop.post('/api/reports', { text: 'Not as JSON.', page: '/' }),
       await shop.post('/about', {}),
     ];
     for (const { status, headers } of replies) expect(headers.getSetCookie(), String(status)).toEqual([]);

@@ -21,8 +21,8 @@ export const privacyRoute: Route = {
 
         <h2>Reporting a problem</h2>
         <p>
-          The box at the foot of every page sends us two things: what you type in it, and which page you were on. We
-          do not need your name to put something right, so please leave it out.
+          The box at the foot of every page sends us two things: what you type in it, and which page you were on,
+          with anything you had searched for. We do not need your name to put something right, so please leave it out.
         </p>
         <p>
           Each report is read first by an automated helper, which uses an AI model from a company called TypeSafe to
@@ -31,7 +31,7 @@ export const privacyRoute: Route = {
         </p>
 
         <h2>Writing to Gerald</h2>
-        <p>Nothing you write in the contact form is kept on file or passed to anyone else.</p>
+        <p>What you write in the contact form is for Gerald alone. It is not passed to anyone else.</p>
 
         <h2>What the shop notes</h2>
         <p>
