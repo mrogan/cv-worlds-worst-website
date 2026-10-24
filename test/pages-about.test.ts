@@ -22,4 +22,11 @@ describe('the about page', () => {
     const { body } = await shop.get('/about');
     expect(tags(body, 'dt').map((dt) => dt.text)).toEqual(['March', 'April', 'May', 'June', 'September']);
   });
+
+  it('links the camera in April to its product page', async () => {
+    const { body } = await shop.get('/about');
+    const link = tags(body, 'a').find((a) => a.text === 'camera');
+    expect(link?.attributes.href).toBe('/products/camera');
+    expect((await shop.get('/products/camera')).status).toBe(200);
+  });
 });

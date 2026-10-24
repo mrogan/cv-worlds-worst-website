@@ -43,7 +43,7 @@ export const aboutRoute: Route = {
             The shop opens. The first sale is a <a href="/products/pencil-both-ends">pencil</a>, on the Wednesday.
           </dd>
           <dt>April</dt>
-          <dd>The <a href="/product/camera">camera</a> is sold. Gerald takes up drawing.</dd>
+          <dd>The <a href="/products/camera">camera</a> is sold. Gerald takes up drawing.</dd>
           <dt>May</dt>
           <dd>A teapot is sold without its <a href="/products/teapot-lid">lid</a>, in error.</dd>
           <dt>June</dt>
