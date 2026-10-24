@@ -57,6 +57,21 @@ describe('every page', () => {
     expect(headers.getSetCookie()).toEqual([]);
   });
 
+  it('sets no cookie on a file, or in reply to a form, a report or a request it cannot take', async () => {
+    const replies = [
+      await shop.get('/assets/site.css'),
+      await shop.get('/assets/report.js'),
+      await shop.get('/api/products'),
+      await shop.post('/contact', { name: 'Ada', email: 'ada@example.org', message: 'Is item 9 still available?' }),
+      await shop.post('/contact', {}),
+      await shop.post('/report', { text: 'The clock is wrong.', page: '/' }),
+      await shop.post('/report', { text: '', page: '/' }),
+      await shop.post('/api/reports', { text: 'The clock is wrong.', page: '/' }),
+      await shop.post('/about', {}),
+    ];
+    for (const { status, headers } of replies) expect(headers.getSetCookie(), String(status)).toEqual([]);
+  });
+
   it('loads its stylesheet, icon and script', async () => {
     for (const path of ['/assets/site.css', '/assets/favicon.svg', '/assets/report.js']) {
       expect((await shop.get(path)).status, path).toBe(200);

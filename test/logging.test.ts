@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { pino } from 'pino';
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { log } from '../src/log.ts';
 import { useShop } from './support/shop.ts';
 
@@ -114,8 +115,25 @@ describe('what the log never holds', () => {
   const AGENT = 'Mozilla/5.0 (Thrumble; Parish Newsletter 7.1) Viaduct/31.0';
   const headers = { 'x-forwarded-for': ADDRESS, 'user-agent': AGENT };
 
+  /**
+   * Every line the log writes, as it would reach stdout: from every level, and from any child logger, which writes
+   * to the same stream. Tests run the log silent, so this one turns it all the way up while it listens.
+   */
+  function listen(): () => string {
+    const stream = (log as unknown as Record<symbol, { write(line: string): boolean }>)[pino.symbols.streamSym];
+    if (!stream) throw new Error('The log has no stream to listen to');
+    const lines: string[] = [];
+    vi.spyOn(stream, 'write').mockImplementation((line: string) => lines.push(line) > 0);
+    const level = log.level;
+    log.level = 'trace';
+    onTestFinished(() => {
+      log.level = level;
+    });
+    return () => lines.join('');
+  }
+
   it('has no visitor’s address or browser, whatever the visitor does', async () => {
-    const spies = (['info', 'warn', 'error'] as const).map((level) => vi.spyOn(log, level));
+    const written = listen();
     const send = (path: string, init: RequestInit = {}) =>
       fetch(shop.url(path), { ...init, headers: { ...headers, ...init.headers }, redirect: 'manual' }).then((r) =>
         r.text(),
@@ -134,9 +152,8 @@ describe('what the log never holds', () => {
       body: new URLSearchParams({ name: 'Ada', email: 'ada@example.org', message: 'Is item 9 still available?' }),
     });
 
-    const logged = JSON.stringify(spies.flatMap((spy) => spy.mock.calls));
-    expect(logged).toContain('problem reported');
-    expect(logged).not.toContain(ADDRESS);
-    expect(logged).not.toMatch(/Thrumble|Viaduct\/31/);
+    expect(written()).toContain('problem reported');
+    expect(written()).not.toContain(ADDRESS);
+    expect(written()).not.toMatch(/Thrumble|Viaduct\/31/);
   });
 });

@@ -21,26 +21,28 @@ export const privacyRoute: Route = {
 
         <h2>Reporting a problem</h2>
         <p>
-          The box at the foot of every page sends us two things: what you type in it, and which page you were on. The
-          two become one entry in the shop's log. We do not need your name to put something right, so please leave it
-          out.
+          The box at the foot of every page sends us two things: what you type in it, and which page you were on. We
+          do not need your name to put something right, so please leave it out.
+        </p>
+        <p>
+          Each report is read first by an automated helper, which uses an AI model from a company called TypeSafe to
+          sort it. Email addresses and long numbers are taken out before it goes to them. We may keep a report for as
+          long as it is useful. It is never shown on the shop.
         </p>
 
         <h2>Writing to Gerald</h2>
-        <p>The contact form thanks you, and that is all. What you write in it is not kept, and it is not sent on.</p>
+        <p>Nothing you write in the contact form is kept on file or passed to anyone else.</p>
 
         <h2>What the shop notes</h2>
         <p>
-          The shop notes each page it sends: which page, and how long it took. Of your browser it notes only its name,
-          its version to the nearest whole number, the system it runs on, and whether it is on a telephone or tablet
-          or on a computer.
+          The shop notes each page it sends: which page, and how long it took. What you search for is noted with the
+          page, for up to 3 days. Of your browser it notes only its name, its version to the nearest whole number,
+          the system it runs on, and whether it is on a telephone or tablet or on a computer.
         </p>
         <p>
           Your internet address is used only to limit how many reports can be sent from one place. It is not written
           down.
         </p>
-        <p>Everything the shop notes is cleared within seven days.</p>
-
-        <p>If you would like to know anything else, <a href="/contact">please write</a>.</p>`,
+        <p>Apart from reports, everything the shop notes is kept for up to 7 days.</p>`,
     }),
 };
