@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.0](https://github.com/mrogan/cv-worlds-worst-website/compare/v0.2.1...v0.3.0) (2026-10-24)
+
+
+### Features
+
+* **pages:** a privacy page, linked from every footer ([#93](https://github.com/mrogan/cv-worlds-worst-website/issues/93)) ([f7b9309](https://github.com/mrogan/cv-worlds-worst-website/commit/f7b9309843cc916db2128180e73758f38d851375))
+
+
+### Bug Fixes
+
+* **about:** point the April camera link at /products/camera ([#95](https://github.com/mrogan/cv-worlds-worst-website/issues/95)) ([8fe3fc4](https://github.com/mrogan/cv-worlds-worst-website/commit/8fe3fc43f142ed6ee9cdad39420527dd487ad9ec))
+* **catalogue:** start each product page at the right offset ([#78](https://github.com/mrogan/cv-worlds-worst-website/issues/78)) ([d728dbe](https://github.com/mrogan/cv-worlds-worst-website/commit/d728dbe2c2bf390f596a32a9e444976d91e6358b))
+* **contact:** log a request record for /contact ([#86](https://github.com/mrogan/cv-worlds-worst-website/issues/86)) ([feb5851](https://github.com/mrogan/cv-worlds-worst-website/commit/feb58514e65b781f2e7cd36bbc8bb69ea8d6f703))
+* **contact:** point the character counter at its status element ([#99](https://github.com/mrogan/cv-worlds-worst-website/issues/99)) ([26c6d8b](https://github.com/mrogan/cv-worlds-worst-website/commit/26c6d8bf54e03a882647a140bbde20582c4f0bc7))
+* **product:** render products that have never been dusted ([#84](https://github.com/mrogan/cv-worlds-worst-website/issues/84)) ([00b37ab](https://github.com/mrogan/cv-worlds-worst-website/commit/00b37abfb61d112fa57b1a52f6da9c60d5ef6f44))
+
 ## [0.2.1](https://github.com/mrogan/cv-worlds-worst-website/compare/v0.2.0...v0.2.1) (2026-10-12)
 
 
