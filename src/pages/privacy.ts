@@ -32,7 +32,8 @@ export const privacyRoute: Route = {
         <h2>What the shop notes</h2>
         <p>
           The shop notes each page it sends: which page, and how long it took. Of your browser it notes only its name,
-          its version, the system it runs on, and whether it is on a telephone or tablet or on a computer.
+          its version to the nearest whole number, the system it runs on, and whether it is on a telephone or tablet
+          or on a computer.
         </p>
         <p>
           Your internet address is used only to limit how many reports can be sent from one place. It is not written
