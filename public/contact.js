@@ -1,6 +1,6 @@
 // Says how much room is left in the message, as it is typed.
 const message = document.querySelector('#message');
-const room = document.querySelector('#message-count');
+const room = document.querySelector('#message-room');
 
 function update() {
   const left = message.maxLength - message.value.length;

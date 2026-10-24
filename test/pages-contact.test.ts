@@ -1,8 +1,43 @@
+import { readFile } from 'node:fs/promises';
+import { runInNewContext } from 'node:vm';
 import { describe, expect, it } from 'vitest';
 import { tags, textOf } from './support/html.ts';
 import { useShop } from './support/shop.ts';
 
 const shop = useShop();
+
+/** Runs public/contact.js against the served page, with just enough of a document for it to find its elements. */
+async function runCounter(page: string) {
+  const script = await readFile(new URL('../public/contact.js', import.meta.url), 'utf-8');
+  const listeners: Record<string, (() => void)[]> = {};
+  const elements = new Map<string, Record<string, unknown>>();
+  const element = (id: string) => {
+    if (!elements.has(id)) {
+      const tag = ['p', 'textarea', 'input'].flatMap((name) => tags(page, name)).find((t) => t.attributes.id === id);
+      if (!tag) return null;
+      elements.set(id, {
+        maxLength: Number(tag.attributes.maxlength ?? -1),
+        value: tag.text,
+        textContent: tag.text,
+        addEventListener: (type: string, listener: () => void) => {
+          listeners[type] = [...(listeners[type] ?? []), listener];
+        },
+      });
+    }
+    return elements.get(id);
+  };
+  const document = { querySelector: (selector: string) => element(selector.replace(/^#/, '')) };
+  runInNewContext(script, { document });
+  return {
+    element,
+    type(text: string) {
+      const message = element('message') as { value: string };
+      message.value = text;
+      for (const listener of listeners.input ?? []) listener();
+    },
+  };
+}
+
 const valid = { name: 'Ada', email: 'ada@example.org', message: 'Is item 9 still available?' };
 
 describe('the contact page', () => {
@@ -16,6 +51,19 @@ describe('the contact page', () => {
   it('says how long a message may be', async () => {
     const { body } = await shop.get('/contact');
     expect(tags(body, 'textarea').find((t) => t.attributes.id === 'message')?.attributes.maxlength).toBe('2000');
+  });
+
+  it('says how much room is left in the message once its script runs', async () => {
+    const { body } = await shop.get('/contact');
+    const counter = await runCounter(body);
+    expect(counter.element('message-room')?.textContent).toBe('Room for 2000 more characters.');
+  });
+
+  it('updates the room left as the message is typed', async () => {
+    const { body } = await shop.get('/contact');
+    const counter = await runCounter(body);
+    counter.type('Is item 9 still available?');
+    expect(counter.element('message-room')?.textContent).toBe('Room for 1974 more characters.');
   });
 
   it('thanks the sender of a complete message', async () => {
