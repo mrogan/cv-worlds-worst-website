@@ -1,5 +1,5 @@
 /**
- * What every page shares: the masthead, the footer, and "Report a problem".
+ * What every page shares: the masthead, and the footer with "Report a problem" and the way to the privacy page.
  */
 import { type Html, html } from '../html.ts';
 import { HTML, type Reply } from '../http.ts';
@@ -71,6 +71,7 @@ export function page(status: number, { title, path, body, script }: Page): Reply
           </form>
         </details>
         <p>${SHOP}, The Garage, 4 Viaduct Lane, Lower Thrumble. Monday to Saturday, nine till five. Closed on Sundays.</p>
+        <p><a href="/privacy">Privacy</a></p>
       </footer>
     </div>
   </body>

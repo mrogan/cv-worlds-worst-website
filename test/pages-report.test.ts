@@ -15,6 +15,7 @@ describe('"Report a problem"', () => {
     ['/search?q=lucky', '/search?q=lucky'],
     ['/about', '/about'],
     ['/contact', '/contact'],
+    ['/privacy', '/privacy'],
     ['/no-such-page', '/no-such-page'],
   ])('is on %s, and knows which page it is on', async (path, page) => {
     const { body } = await shop.get(path);

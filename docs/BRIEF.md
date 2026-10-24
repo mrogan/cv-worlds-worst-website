@@ -66,6 +66,7 @@ Accessible to WCAG 2.2 AA, readable on a phone, system fonts, no third-party req
 | Search | One box. Results as on the product list. |
 | About | Gerald, the garage, Darren, and a short history of the shop since March. |
 | Contact | Name, email and message. It thanks the sender. It stores and sends nothing. |
+| Privacy | What the shop keeps about a visitor, which is very little, in a few short paragraphs. Linked from the footer. |
 
 Every page carries "Report a problem": one box, for telling the shop that something on the page is wrong.
 

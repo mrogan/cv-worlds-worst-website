@@ -3,7 +3,7 @@ import { tags } from './support/html.ts';
 import { useShop } from './support/shop.ts';
 
 const shop = useShop();
-const PAGES = ['/', '/products', '/products/thing-1', '/search', '/about', '/contact', '/no-such-page'];
+const PAGES = ['/', '/products', '/products/thing-1', '/search', '/about', '/contact', '/privacy', '/no-such-page'];
 
 describe('every page', () => {
   it.each(PAGES)('%s is an HTML document in British English, titled for the shop', async (path) => {
@@ -44,6 +44,37 @@ describe('every page', () => {
     );
     expect(fetched.length).toBeGreaterThan(2);
     for (const url of fetched) expect(url).toMatch(/^\/assets\//);
+  });
+
+  it.each(PAGES)('%s points to the privacy page from its footer', async (path) => {
+    const { body } = await shop.get(path);
+    const footer = body.slice(body.indexOf('<footer'), body.indexOf('</footer>'));
+    expect(tags(footer, 'a').map((a) => [a.attributes.href, a.text])).toContainEqual(['/privacy', 'Privacy']);
+  });
+
+  it.each(PAGES)('%s sets no cookie', async (path) => {
+    const { headers } = await shop.get(path);
+    expect(headers.getSetCookie()).toEqual([]);
+  });
+
+  it('sets no cookie on a file, or in reply to a form, a report or a request it cannot take', async () => {
+    const replies = [
+      await shop.get('/assets/site.css'),
+      await shop.get('/assets/report.js'),
+      await shop.get('/api/products'),
+      await shop.post('/contact', { name: 'Ada', email: 'ada@example.org', message: 'Is item 9 still available?' }),
+      await shop.post('/contact', {}),
+      await shop.post('/report', { text: 'The clock is wrong.', page: '/' }),
+      await shop.post('/report', { text: '', page: '/' }),
+      await fetch(shop.url('/api/reports'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text: 'The clock is wrong.', page: '/' }),
+      }),
+      await shop.post('/api/reports', { text: 'Not as JSON.', page: '/' }),
+      await shop.post('/about', {}),
+    ];
+    for (const { status, headers } of replies) expect(headers.getSetCookie(), String(status)).toEqual([]);
   });
 
   it('loads its stylesheet, icon and script', async () => {
