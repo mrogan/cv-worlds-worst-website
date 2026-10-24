@@ -22,12 +22,33 @@ describe('the privacy page', () => {
     expect(text).toContain('The shop sets no cookies');
   });
 
-  it('says where a report goes and how long it may be kept', async () => {
+  it('says where a report goes, and that it is never shown on the shop', async () => {
     const text = textOf((await shop.get('/privacy')).body);
     expect(text).toContain('what you type in it, and which page you were on, with anything you had searched for');
     expect(text).toContain('an AI model from a company called TypeSafe');
     expect(text).toContain('Email addresses and long numbers are taken out before it goes to them.');
-    expect(text).toContain('We may keep a report for as long as it is useful.');
+    expect(text).toContain('A report is never shown on the shop.');
+  });
+
+  it('says a report cannot be found again, is deleted after 30 days, and should hold no personal details', async () => {
+    const text = textOf((await shop.get('/privacy')).body);
+    expect(text).toContain(
+      'A report does not tell us who you are, so we cannot find yours to show it to you or to remove it early.',
+    );
+    expect(text).toContain('Every report is deleted after 30 days.');
+    expect(text).toContain('Please leave your name and any other personal details out of it.');
+    expect(text).not.toContain('as long as it is useful');
+  });
+
+  it('says who runs the shop, at its foot, linking to the shop’s repository', async () => {
+    const { body } = await shop.get('/privacy');
+    const main = body.slice(body.indexOf('<main'), body.indexOf('</main>'));
+    expect(tags(main, 'p').at(-1)?.text).toBe('This shop is run by Martin Rogan as a demonstration.');
+    const link = tags(main, 'a').at(-1);
+    expect([link?.attributes.href, link?.text]).toEqual([
+      'https://github.com/mrogan/cv-worlds-worst-website',
+      'demonstration',
+    ]);
   });
 
   it('says what the contact form keeps, and how long anything else noted is kept', async () => {
