@@ -26,8 +26,10 @@ describe('the review gate and merge queue workflows', () => {
 
   // A merge queue's run has no head branch: grouped by it alone, every queue run would share one group and cancel
   // each other.
-  it("keeps each of the gates' runs in a group of its own branch", () => {
-    expect(read('gates.yml')).toMatch(/^ {2}group: gates-\$\{\{ github\.head_ref \|\| github\.ref \}\}$/m);
+  it.each(['check', 'gates'])('keeps each run of %s.yml in a group of its own branch', (name) => {
+    expect(read(`${name}.yml`)).toMatch(
+      new RegExp(`^ {2}group: ${name}-\\$\\{\\{ github\\.head_ref \\|\\| github\\.ref \\}\\}$`, 'm'),
+    );
   });
 
   it('passes the key in the review environment on to the gate, and nothing else', () => {
