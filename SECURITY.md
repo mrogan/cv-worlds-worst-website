@@ -4,7 +4,7 @@ This shop is bad on purpose, but it is meant to be harmless: its defects are thi
 
 ## Reporting a vulnerability
 
-Please report it privately through GitHub: [open a private report](https://github.com/mrogan/cv-worlds-worst-website/security/advisories/new), or use the repository's **Security** tab, then **Report a vulnerability**. Don't open a public issue.
+Please report it privately through GitHub: [open a private report](https://github.com/the-roganator/cv-worlds-worst-website/security/advisories/new), or use the repository's **Security** tab, then **Report a vulnerability**. Don't open a public issue.
 
 I'll acknowledge a report within five working days and keep you updated until it is resolved. This is a one-person project, so please allow reasonable time for a fix before disclosing publicly. I'm glad to credit you in the advisory.
 
@@ -16,7 +16,7 @@ I'll acknowledge a report within five working days and keep you updated until it
 
 ## What doesn't
 
-- The shop's ordinary defects: wrong content, broken pages, missing hardening headers. Report those through the "Report a problem" box on the page, and watch [Software Factory](https://github.com/mrogan/cv-software-factory) fix them.
+- The shop's ordinary defects: wrong content, broken pages, missing hardening headers. Report those through the "Report a problem" box on the page, and watch [Software Factory](https://github.com/the-roganator/cv-software-factory) fix them.
 - Findings that need a compromised GitHub account or laptop belonging to the maintainer.
 
 ## Supported versions

@@ -1,7 +1,7 @@
 # Reviewing pull requests here
 
 Mossop's Practical Sundries is a small shop that is bad on purpose, looked after by
-[Software Factory](https://github.com/mrogan/cv-software-factory): its agents find the shop's defects and fix them
+[Software Factory](https://github.com/the-roganator/cv-software-factory): its agents find the shop's defects and fix them
 here, one ticket at a time. Everything in it is public and part of a portfolio, so the bar is best practice and
 scrupulous hygiene. Most pull requests are written by the factory's agents or by Claude Code, and merged by Martin.
 
