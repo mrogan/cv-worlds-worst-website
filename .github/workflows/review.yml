@@ -1,0 +1,39 @@
+# The review gate (Software Factory's ADR 0014): posts the `review` check, as the review App, on a pull request's head
+# and on the merge queue's commit for it. It passes when Martin opened the pull request, or approved its head after the
+# last push.
+#
+# The gate lives in Software Factory's repository and is called at a pinned commit, so both repositories keep one rule
+# and a change here cannot loosen it. It judges this repository's pull requests, through the API, and never checks
+# out, builds or runs their code.
+#
+# Only main's copy runs with the App's key. `pull_request_target` and `workflow_run` run this workflow as main has it,
+# and the key is in this repository's `review` environment, which only main may use. A called workflow's own triggers
+# do not apply, so the triggers are here: a review, and the merge queue, run review-requested.yml, this repository's
+# own, which holds nothing; its run starts this one, from main, through `workflow_run`, which names a workflow in the
+# same repository.
+#
+# Until the review App's key is in the `review` environment, as the secret REVIEW_APP_PRIVATE_KEY, the gate says its
+# verdict and posts nothing.
+name: review
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review, edited]
+  workflow_run:
+    workflows: [review requested]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  # No concurrency here: the called workflow keeps one verdict at a time for a branch, and a caller in the same group
+  # would wait on it for ever.
+  review:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: mrogan/cv-software-factory/.github/workflows/review.yml@d29d11f7824b2ed483b0a025b238af6793694b97 # main
+    # The called job names the `review` environment, this repository's, but its secrets reach it only when the caller
+    # passes them, and the called workflow declares none to pass by name. This repository has no other secret.
+    secrets: inherit
