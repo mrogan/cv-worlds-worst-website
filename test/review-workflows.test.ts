@@ -32,7 +32,7 @@ describe('the review gate and merge queue workflows', () => {
     );
   });
 
-  it('passes the key in the review environment on to the gate, and nothing else', () => {
+  it('passes the key in the review environment on to the gate', () => {
     // A called workflow sees an environment secret only when its caller passes it, by name.
     expect(review).toMatch(/^ {4}secrets:\n {6}REVIEW_APP_PRIVATE_KEY: \$\{\{ secrets\.REVIEW_APP_PRIVATE_KEY \}\}$/m);
     expect(review).not.toMatch(/secrets: inherit/);
