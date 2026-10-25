@@ -20,13 +20,20 @@ describe('the review gate and merge queue workflows', () => {
   });
 
   // The merge queue waits for every required check on its commit: one that never runs there holds the queue.
-  it.each(['check.yml', 'pr-title.yml'])("runs %s on the merge queue's commit", (name) => {
+  it.each(['check.yml', 'pr-title.yml', 'gates.yml'])("runs %s on the merge queue's commit", (name) => {
     expect(read(name)).toMatch(/^ {2}merge_group:\n {4}types: \[checks_requested\]$/m);
   });
 
-  it('passes the key in the review environment on to the gate', () => {
-    // A called workflow sees an environment secret only when its caller passes it.
-    expect(review).toMatch(/^ {4}secrets: inherit$/m);
+  // A merge queue's run has no head branch: grouped by it alone, every queue run would share one group and cancel
+  // each other.
+  it("keeps each of the gates' runs in a group of its own branch", () => {
+    expect(read('gates.yml')).toMatch(/^ {2}group: gates-\$\{\{ github\.head_ref \|\| github\.ref \}\}$/m);
+  });
+
+  it('passes the key in the review environment on to the gate, and nothing else', () => {
+    // A called workflow sees an environment secret only when its caller passes it, by name.
+    expect(review).toMatch(/^ {4}secrets:\n {6}REVIEW_APP_PRIVATE_KEY: \$\{\{ secrets\.REVIEW_APP_PRIVATE_KEY \}\}$/m);
+    expect(review).not.toMatch(/secrets: inherit/);
   });
 
   it('asks again after a review and in the merge queue', () => {
