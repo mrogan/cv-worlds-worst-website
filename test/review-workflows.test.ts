@@ -15,6 +15,11 @@ describe('the review gate workflows', () => {
     expect(review).toMatch(/^ {2}workflow_run:\n {4}workflows: \[review requested\]\n {4}types: \[completed\]$/m);
   });
 
+  it('passes the key in the review environment on to the gate', () => {
+    // A called workflow sees an environment secret only when its caller passes it.
+    expect(review).toMatch(/^ {4}secrets: inherit$/m);
+  });
+
   it('asks again after a review and in the merge queue', () => {
     expect(requested).toMatch(/^ {2}pull_request_review:\n {4}types: \[submitted, dismissed\]$/m);
     expect(requested).toMatch(/^ {2}merge_group:\n {4}types: \[checks_requested\]$/m);

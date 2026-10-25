@@ -34,3 +34,6 @@ jobs:
       contents: read
       pull-requests: read
     uses: mrogan/cv-software-factory/.github/workflows/review.yml@d29d11f7824b2ed483b0a025b238af6793694b97 # main
+    # The called job names the `review` environment, this repository's, but its secrets reach it only when the caller
+    # passes them, and the called workflow declares none to pass by name. This repository has no other secret.
+    secrets: inherit
