@@ -33,7 +33,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: mrogan/cv-software-factory/.github/workflows/review.yml@b7b9df0cd89dce75fc0db09c4893b132592eda8d # main
+    uses: the-roganator/cv-software-factory/.github/workflows/review.yml@b7b9df0cd89dce75fc0db09c4893b132592eda8d # main
     # The called job names the `review` environment, this repository's, but a secret reaches it only when the caller
     # passes it, even one held in that environment alone. The called workflow declares the key, so it is passed by name,
     # and nothing else is.

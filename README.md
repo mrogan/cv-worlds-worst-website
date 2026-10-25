@@ -1,11 +1,11 @@
 # The World's Worst Website
 
-[![check](https://github.com/mrogan/cv-worlds-worst-website/actions/workflows/check.yml/badge.svg?branch=main)](https://github.com/mrogan/cv-worlds-worst-website/actions/workflows/check.yml)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/mrogan/cv-worlds-worst-website/badge)](https://scorecard.dev/viewer/?uri=github.com/mrogan/cv-worlds-worst-website)
+[![check](https://github.com/the-roganator/cv-worlds-worst-website/actions/workflows/check.yml/badge.svg?branch=main)](https://github.com/the-roganator/cv-worlds-worst-website/actions/workflows/check.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/the-roganator/cv-worlds-worst-website/badge)](https://scorecard.dev/viewer/?uri=github.com/the-roganator/cv-worlds-worst-website)
 
 Mossop's Practical Sundries: a small online shop, run with total sincerity, that is **bad on purpose**.
 
-It exists to be looked after. [Software Factory](https://github.com/mrogan/cv-software-factory) is a system of AI agents and deterministic gates that notices what is wrong with a live web app, writes the fix, proves it is safe, ships it as a canary and checks that it worked. This shop is the app it looks after, and the two together are my portfolio. I'm Martin Rogan.
+It exists to be looked after. [Software Factory](https://github.com/the-roganator/cv-software-factory) is a system of AI agents and deterministic gates that notices what is wrong with a live web app, writes the fix, proves it is safe, ships it as a canary and checks that it worked. This shop is the app it looks after, and the two together are my portfolio. I'm Martin Rogan.
 
 ## What is wrong with it
 
@@ -19,8 +19,8 @@ So if something looks wrong, it probably is. The interesting question is how lon
 
 Every change after the first commit is a pull request. Once the factory is running, most of them are its own, and each one says what it noticed, the evidence, what it changed and how the fix was verified.
 
-- **[Pull requests](https://github.com/mrogan/cv-worlds-worst-website/pulls?q=is%3Apr)**: the fixes, as they land.
-- **[Software Factory](https://github.com/mrogan/cv-software-factory)**: how it works, how far along it is, and how to run both on your own laptop.
+- **[Pull requests](https://github.com/the-roganator/cv-worlds-worst-website/pulls?q=is%3Apr)**: the fixes, as they land.
+- **[Software Factory](https://github.com/the-roganator/cv-software-factory)**: how it works, how far along it is, and how to run both on your own laptop.
 
 > [!NOTE]
 > **Under construction.** The shop is built and deployed; the factory that fixes it is being built in the open, a milestone at a time. Until its first fix lands, this history is short.
@@ -43,7 +43,7 @@ make dev                       # the shop on http://localhost:8080
 make check                     # what CI requires: lint, types, tests, rendered manifests
 ```
 
-To run it on Kubernetes beside the factory, with its telemetry in Grafana, follow [Software Factory's README](https://github.com/mrogan/cv-software-factory#run-it-locally): Argo CD deploys this repository's `deploy/overlays/local` from `main`.
+To run it on Kubernetes beside the factory, with its telemetry in Grafana, follow [Software Factory's README](https://github.com/the-roganator/cv-software-factory#run-it-locally): Argo CD deploys this repository's `deploy/overlays/local` from `main`.
 
 ## How changes land
 

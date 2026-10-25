@@ -46,7 +46,7 @@ describe('the privacy page', () => {
     expect(tags(main, 'p').at(-1)?.text).toBe('This shop is run by Martin Rogan as a demonstration.');
     const link = tags(main, 'a').at(-1);
     expect([link?.attributes.href, link?.text]).toEqual([
-      'https://github.com/mrogan/cv-worlds-worst-website',
+      'https://github.com/the-roganator/cv-worlds-worst-website',
       'demonstration',
     ]);
   });

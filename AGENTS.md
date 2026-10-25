@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Mossop's Practical Sundries: a small shop that is bad on purpose, looked after by [Software Factory](https://github.com/mrogan/cv-software-factory). Read the [README](README.md) first.
+Mossop's Practical Sundries: a small shop that is bad on purpose, looked after by [Software Factory](https://github.com/the-roganator/cv-software-factory). Read the [README](README.md) first.
 
 Everything you write here is public and part of a portfolio. Write for a thoughtful reviewer.
 
