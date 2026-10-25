@@ -3,9 +3,13 @@ name: check
 
 # Pull requests the factory's App opens (deploy, release) run these too, at once: no workflow opens pull requests.
 # Theirs are lighter: a release builds no image, and a deploy checks the image it pins rather than building one (the
-# `kind` job). They also run on main after each merge, which is what the README's badge reports.
+# `kind` job). They also run on main after each merge, which is what the README's badge reports, and on the merge
+# queue's commit for a pull request, which holds the change on main as it will merge: everything runs there, whatever
+# the pull request is, since a merge queue's commit names no author.
 on:
   pull_request:
+  merge_group:
+    types: [checks_requested]
   push:
     branches: [main]
 
@@ -19,7 +23,8 @@ concurrency:
 jobs:
   # Whether this is a release or deploy pull request that the factory's App opened and nobody has changed. Only those skip
   # checks, and a skipped job counts as passed for the ruleset, so the test is the author and the exact files and
-  # lines that change. Anything else, or this job failing, is `code` and runs everything.
+  # lines that change. Anything else, or this job failing, is `code` and runs everything; so is every run that is not a
+  # pull request's, the merge queue's included.
   kind:
     name: which checks apply
     runs-on: ubuntu-24.04
