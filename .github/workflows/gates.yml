@@ -1,21 +1,31 @@
 # The gates a pull request to the shop must pass beyond its own lint, types and tests: its journeys compared with the
 # base's, test integrity, dependency review and an image scan, and, as a signal only, whether its tests failed first.
+# They run on the pull request, and again on the merge queue's commit for it, which holds the change on main as it
+# will merge, with the pull requests ahead of it in the queue; whether its tests failed first is said on the pull
+# request alone.
 #
 # They live in Software Factory's repository and are called at a pinned commit, so a change here cannot loosen them.
 name: gates
 
 on:
   pull_request:
+  merge_group:
+    types: [checks_requested]
 
+# The jobs here, and the gates they call, which build and run the change's code, get a token that reads the code and
+# nothing more. Without this they would get the repository's default token, with whatever it allows; on the merge
+# queue's commit too, where nothing else bounds it.
 permissions:
   contents: read
 
+# A merge queue's run names no head branch; its own branch, gh-readonly-queue/..., is one for each commit it tests.
 concurrency:
-  group: gates-${{ github.head_ref }}
+  group: gates-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
   # Whether this is a release or deploy pull request the factory's App opened and nobody changed, as check.yml says.
+  # Anything else is `code`, and every gate applies; so is the merge queue's commit, which names no author.
   kind:
     name: which gates apply
     runs-on: ubuntu-24.04
@@ -24,6 +34,7 @@ jobs:
       kind: ${{ steps.which.outputs.kind }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
         with:
           persist-credentials: false
           fetch-depth: 2
@@ -32,7 +43,7 @@ jobs:
           AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           kind=code
-          if [ "$AUTHOR" = 'mrogan-software-factory[bot]' ]; then
+          if [ "$GITHUB_EVENT_NAME" = pull_request ] && [ "$AUTHOR" = 'mrogan-software-factory[bot]' ]; then
             files=$(git diff --name-only HEAD^1 HEAD)
             other_lines=$(git diff --unified=0 HEAD^1 HEAD -- package.json | grep -E '^[-+]' | grep -vE '^(\+\+\+|---) ' | grep -vE '^[-+]  "version": "[^"]+",$' || true)
             if [ -n "$files" ] && ! grep -vqxE 'CHANGELOG\.md|package\.json|\.release-please-manifest\.json' <<< "$files" && [ -z "$other_lines" ]; then
@@ -46,6 +57,6 @@ jobs:
 
   gates:
     needs: kind
-    uses: mrogan/cv-software-factory/.github/workflows/app-gates.yml@02188ee7f832d02f2954c2d4d7895a610f1da75b # main
+    uses: mrogan/cv-software-factory/.github/workflows/app-gates.yml@b7b9df0cd89dce75fc0db09c4893b132592eda8d # main
     with:
       skip: ${{ needs.kind.outputs.kind != 'code' }}

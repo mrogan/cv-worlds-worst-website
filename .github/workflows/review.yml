@@ -33,7 +33,9 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: mrogan/cv-software-factory/.github/workflows/review.yml@d29d11f7824b2ed483b0a025b238af6793694b97 # main
-    # The called job names the `review` environment, this repository's, but its secrets reach it only when the caller
-    # passes them, and the called workflow declares none to pass by name. This repository has no other secret.
-    secrets: inherit
+    uses: mrogan/cv-software-factory/.github/workflows/review.yml@b7b9df0cd89dce75fc0db09c4893b132592eda8d # main
+    # The called job names the `review` environment, this repository's, but a secret reaches it only when the caller
+    # passes it, even one held in that environment alone. The called workflow declares the key, so it is passed by name,
+    # and nothing else is.
+    secrets:
+      REVIEW_APP_PRIVATE_KEY: ${{ secrets.REVIEW_APP_PRIVATE_KEY }}
