@@ -23,6 +23,8 @@ export interface FakeFlagd {
   connections(): number;
   /** Ends every stream cleanly, as flagd does when it shuts down gracefully, and goes on answering. */
   end(): void;
+  /** While on, ends each new stream cleanly before sending it anything, as a flagd shutting down might. */
+  mute(on: boolean): void;
   /** Stops answering, dropping every stream, as flagd does when it goes away. */
   stop(): Promise<void>;
   /** Answers again, on the same port. */
@@ -68,6 +70,7 @@ export async function startFlagd(initial: Record<string, FlagdFlag> = {}): Promi
   let flags = JSON.stringify({ flags: initial });
   let streams = new Set<ServerWritableStream<Buffer, string>>();
   let connected = 0;
+  let muted = false;
   let server: Server;
   let port = 0;
 
@@ -76,6 +79,10 @@ export async function startFlagd(initial: Record<string, FlagdFlag> = {}): Promi
     server.addService(SYNC, {
       syncFlags(stream: ServerWritableStream<Buffer, string>) {
         connected += 1;
+        if (muted) {
+          stream.end();
+          return;
+        }
         streams.add(stream);
         stream.on('cancelled', () => streams.delete(stream));
         stream.write(flags);
@@ -98,6 +105,9 @@ export async function startFlagd(initial: Record<string, FlagdFlag> = {}): Promi
       for (const stream of streams) stream.write(flags);
     },
     connections: () => connected,
+    mute(on) {
+      muted = on;
+    },
     end() {
       for (const stream of streams) stream.end();
       streams = new Set();

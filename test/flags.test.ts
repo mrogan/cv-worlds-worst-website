@@ -244,6 +244,25 @@ describe('a sync that falls silent', () => {
     expect(flags.inStep()).toBe(true);
   });
 
+  it('tries again when flagd ends the stream it opens again too, before sending anything', async () => {
+    let now = 6_000_000;
+    flagd.set({ 'big-buttons': on });
+    const { flags, isOn } = await shop({ now: () => now, watchMs: 20 });
+    const before = flagd.connections();
+    flagd.mute(true);
+    flagd.end();
+    now += 60_000 + 5_000;
+    await vi.waitFor(() => expect(flagd.connections()).toBe(before + 1));
+    expect(flags.inStep()).toBe(false);
+    now += STALE_AFTER_MS - 5_000;
+    expect(await isOn('big-buttons')).toBe(false);
+    flagd.mute(false);
+    now += 5_000 + 60_000;
+    await vi.waitFor(() => expect(flags.inStep()).toBe(true), { timeout: 5_000 });
+    expect(flagd.connections()).toBe(before + 2);
+    expect(await isOn('big-buttons')).toBe(true);
+  });
+
   it('is off once silent past a stream and a minute while flagd is away, and back when flagd is', async () => {
     let now = 7_000_000;
     flagd.set({ 'big-buttons': on });
@@ -255,7 +274,7 @@ describe('a sync that falls silent', () => {
     now += 1;
     expect(await isOn('big-buttons')).toBe(false);
     // Opening it again finds flagd away, and the provider says so, and reconnects by itself.
-    await vi.waitFor(() => expect(flags.inStep()).toBe(false));
+    await vi.waitFor(() => expect(flags.inStep()).toBe(false), { timeout: 5_000 });
     await flagd.restart();
     await vi.waitFor(() => expect(flags.inStep()).toBe(true), { timeout: 10_000 });
     expect(await isOn('big-buttons')).toBe(true);

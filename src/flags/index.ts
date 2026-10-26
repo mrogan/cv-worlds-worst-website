@@ -62,7 +62,7 @@ const RESERVED = new Set(['none', 'stale', 'invalid']);
 export interface Flags {
   /** The flags for one request, from what it carries. */
   forRequest(req: IncomingMessage, url: URL): RequestFlags;
-  /** Whether the shop holds a flag set and is in step with flagd: synced, and not without it since. */
+  /** Whether the shop holds a flag set and is in step with flagd: synced, not lost since, and not silent. */
   inStep(): boolean;
   /** Stops the sync with flagd. */
   close(): Promise<void>;
@@ -86,7 +86,7 @@ export interface FlagsOptions {
   now?: () => number;
   /** How long to wait before syncing again when flagd drops the stream. */
   reconnectMs?: number;
-  /** How long each stream to flagd lasts. */
+  /** How long each stream to flagd lasts: more than nothing, or the provider sets no deadline and the watch reopens it. */
   streamMs?: number;
   /** How often the sync is checked for a stream that ended without a word. */
   watchMs?: number;
@@ -140,12 +140,13 @@ export function createFlags({
   // A stream flagd ended cleanly is opened again, on the same provider, which keeps the flag set it holds meanwhile:
   // once per silence, and only when the provider is not already reconnecting after an error (when it has said it is
   // stale). If flagd is away, the provider says so, and reconnects by itself from then on.
-  let reopenedFor: number | undefined;
+  // An attempt that flagd also ends before any flag set is tried again after as long again.
+  let reopenedAt = 0;
+  const silent = () => now() - Math.max(heardAt, reopenedAt) >= streamMs + REOPEN_AFTER_MS;
   const watch = syncing
     ? setInterval(() => {
-        if (!synced || lostAt !== undefined || reopenedFor === heardAt) return;
-        if (now() - heardAt < streamMs + REOPEN_AFTER_MS) return;
-        reopenedFor = heardAt;
+        if (!synced || lostAt !== undefined || !silent()) return;
+        reopenedAt = now();
         log.info({ event: 'flags' }, 'sync with flagd silent: opening it again');
         syncing.provider.initialize().then(found, () => {});
       }, watchMs)
@@ -175,7 +176,7 @@ export function createFlags({
   };
 
   return {
-    inStep: () => synced && lostAt === undefined,
+    inStep: () => synced && lostAt === undefined && now() - heardAt < streamMs + REOPEN_AFTER_MS,
     forRequest(req, url) {
       const marked = req.headers[UNMEASURED] !== undefined;
       const cookie = previewCookie(req);
