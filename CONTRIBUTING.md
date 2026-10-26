@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for looking. This repository is unusual: the shop is bad on purpose, and fixing it is the job of [Software Factory](https://github.com/mrogan/cv-software-factory), whose agents open most of the pull requests here. It is also half of my portfolio (I'm Martin Rogan), so I keep its scope deliberately narrow.
+Thank you for looking. This repository is unusual: the shop is bad on purpose, and fixing it is the job of [Software Factory](https://github.com/the-roganator/cv-software-factory), whose agents open most of the pull requests here. It is also half of my portfolio (I'm Martin Rogan), so I keep its scope deliberately narrow.
 
 ## Found something wrong with the shop?
 

@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll } from 'vitest';
 import { seed } from '../../scripts/seed.ts';
 import { type Database, openDatabase } from '../../src/db.ts';
+import type { Flags } from '../../src/flags/index.ts';
 import type { Reports } from '../../src/reports.ts';
 import { createShop } from '../../src/shop.ts';
 import { TEST_CATALOGUE } from './catalogue.ts';
@@ -51,14 +52,22 @@ export function useDatabase(catalogue: 'test' | 'real' = 'test'): { db: Database
   return held;
 }
 
-/** Starts the shop before the file's tests and stops it after. `shop.url('/path')` is where to fetch. */
-export function useShop(options: { reports?: Reports; catalogue?: 'test' | 'real' } = {}): Shop {
+/**
+ * Starts the shop before the file's tests and stops it after. `shop.url('/path')` is where to fetch. Its flags, when
+ * given, are made once the file's other `beforeAll`s have run, so they can sync from a flagd those start.
+ */
+export function useShop(options: { reports?: Reports; catalogue?: 'test' | 'real'; flags?: () => Flags } = {}): Shop {
   const held = useDatabase(options.catalogue);
   let base = '';
   const server = createServer((req, res) => handler(req, res));
   let handler: ReturnType<typeof createShop>;
   beforeAll(async () => {
-    handler = createShop({ commit: COMMIT, db: held.db, ...(options.reports && { reports: options.reports }) });
+    handler = createShop({
+      commit: COMMIT,
+      db: held.db,
+      ...(options.reports && { reports: options.reports }),
+      ...(options.flags && { flags: options.flags() }),
+    });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   });

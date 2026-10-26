@@ -1,10 +1,12 @@
 /**
- * The shop's HTTP handler: security headers, the routes, the files in public/, `/health` and `/version`.
+ * The shop's HTTP handler: security headers, the routes, the files in public/, `/health` and `/version`, and each
+ * request's feature flags.
  */
 import type { IncomingMessage, RequestListener, ServerResponse } from 'node:http';
 import { context } from '@opentelemetry/api';
 import { getRPCMetadata, RPCType } from '@opentelemetry/core';
 import type { Asset } from './assets.ts';
+import { createFlags, type Flags, PREVIEW, REVISION_HEADER } from './flags/index.ts';
 import { JSON_TYPE, json, matchPath, type Reply, type Request, type Route } from './http.ts';
 import { log } from './log.ts';
 import { measured } from './measured.ts';
@@ -12,6 +14,8 @@ import { measured } from './measured.ts';
 export interface AppOptions {
   /** The commit the running build was made from. */
   commit: string;
+  /** The feature flags. Without them, every flag is off. */
+  flags?: Flags;
   assets: Map<string, Asset>;
   routes: Route[];
   /** The reply when no route matches a path. */
@@ -31,7 +35,14 @@ const SECURITY_HEADERS = {
 /** Forms and reports are a few hundred bytes. Anything much larger is not for us. */
 const MAX_BODY_BYTES = 16 * 1024;
 
-export function createApp({ commit, assets, routes, notFound, failed }: AppOptions): RequestListener {
+export function createApp({
+  commit,
+  flags = createFlags(),
+  assets,
+  routes,
+  notFound,
+  failed,
+}: AppOptions): RequestListener {
   const version = JSON.stringify({ commit });
 
   return async (req, res) => {
@@ -52,8 +63,17 @@ export function createApp({ commit, assets, routes, notFound, failed }: AppOptio
 
     for (const [name, value] of Object.entries(SECURITY_HEADERS)) res.setHeader(name, value);
 
-    if (path === '/health') return send(req, res, { status: 200, type: JSON_TYPE, body: '{"status":"ok"}' });
-    if (path === '/version') return send(req, res, { status: 200, type: JSON_TYPE, body: version });
+    const flagged = flags.forRequest(req, url);
+    const revision = await flagged.revision();
+    // The flag context's headers go on last, so no route's own can undo them.
+    const told: Record<string, string> = revision === undefined ? {} : { [REVISION_HEADER]: revision };
+    for (const [name, value] of Object.entries(told)) res.setHeader(name, value);
+    const answer = (reply: Reply, flags: Record<string, string> = {}) => send(req, res, reply, { ...told, ...flags });
+    // The ask is the flag context's alone: no page, redirect or log sees it.
+    if (url.searchParams.has(PREVIEW)) url.searchParams.delete(PREVIEW);
+
+    if (path === '/health') return answer({ status: 200, type: JSON_TYPE, body: '{"status":"ok"}' });
+    if (path === '/version') return answer({ status: 200, type: JSON_TYPE, body: version });
 
     const asset = method === 'GET' ? assets.get(path) : undefined;
     if (asset) {
@@ -63,7 +83,7 @@ export function createApp({ commit, assets, routes, notFound, failed }: AppOptio
         res.writeHead(304).end();
         return;
       }
-      return send(req, res, { status: 200, type: asset.type, body: asset.body });
+      return answer({ status: 200, type: asset.type, body: asset.body });
     }
 
     const request: Request = {
@@ -72,15 +92,16 @@ export function createApp({ commit, assets, routes, notFound, failed }: AppOptio
       body: Buffer.alloc(0),
       contentType: req.headers['content-type'] ?? '',
       client: clientOf(req),
+      flag: (name) => flagged.on(name),
     };
 
     try {
       const here = routes.filter((route) => matchPath(route.path, path));
       const route = here.find((candidate) => candidate.method === method);
       if (!route) {
-        if (here.length === 0) return send(req, res, notFound(request));
+        if (here.length === 0) return answer(notFound(request));
         const allow = [...new Set(here.flatMap((r) => (r.method === 'GET' ? ['GET', 'HEAD'] : [r.method])))].join(', ');
-        return send(req, res, json(405, { error: `This address only takes ${allow}.` }, { allow }));
+        return answer(json(405, { error: `This address only takes ${allow}.` }, { allow }));
       }
 
       routeName = route.path;
@@ -89,18 +110,15 @@ export function createApp({ commit, assets, routes, notFound, failed }: AppOptio
 
       if (method === 'POST') {
         const body = await readBody(req);
-        if (!body) return send(req, res, json(413, { error: 'That is more than we can take in one go.' }));
+        if (!body) return answer(json(413, { error: 'That is more than we can take in one go.' }));
         request.body = body;
       }
       request.params = matchPath(route.path, path) ?? {};
-      send(req, res, await route.handle(request));
+      const reply = await route.handle(request);
+      answer(reply, await flagged.headers(method === 'GET'));
     } catch (error) {
       log.error({ event: 'error', err: error, method, path, route: routeName }, `${method} ${path} failed`);
-      send(
-        req,
-        res,
-        path.startsWith('/api/') ? json(500, { error: 'Something went wrong at our end.' }) : failed(request),
-      );
+      answer(path.startsWith('/api/') ? json(500, { error: 'Something went wrong at our end.' }) : failed(request));
     }
   };
 }
@@ -127,9 +145,10 @@ function clientOf(req: IncomingMessage): string {
   return last || req.socket.remoteAddress || 'unknown';
 }
 
-function send(req: IncomingMessage, res: ServerResponse, reply: Reply): void {
+function send(req: IncomingMessage, res: ServerResponse, reply: Reply, last: Record<string, string>): void {
   res.writeHead(reply.status, {
     ...reply.headers,
+    ...last,
     'content-type': reply.type,
     'content-length': Buffer.byteLength(reply.body),
   });

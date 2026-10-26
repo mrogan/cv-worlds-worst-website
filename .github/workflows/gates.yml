@@ -57,6 +57,6 @@ jobs:
 
   gates:
     needs: kind
-    uses: mrogan/cv-software-factory/.github/workflows/app-gates.yml@b7b9df0cd89dce75fc0db09c4893b132592eda8d # main
+    uses: the-roganator/cv-software-factory/.github/workflows/app-gates.yml@b7b9df0cd89dce75fc0db09c4893b132592eda8d # main
     with:
       skip: ${{ needs.kind.outputs.kind != 'code' }}

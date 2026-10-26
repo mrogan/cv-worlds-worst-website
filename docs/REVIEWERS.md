@@ -12,8 +12,12 @@ the shop is bad on purpose, and only the ticket's fault is in scope.
    what a visitor sees: text, links and status, not markup or internals. (`test/support/shop.ts`)
 4. **One form inside.** Money is whole pence and dates are ISO strings until a page shows them;
    formatting happens once, at the edge. (`src/money.ts`)
-5. **Nothing new to install.** The shop runs on Node's own modules. A new runtime dependency, or
-   a framework in disguise, is a finding.
+5. **Nothing new to install.** The shop runs on Node's own modules, OpenTelemetry and pino for its
+   telemetry, and for its feature flags OpenFeature's server SDK and flagd's provider with the
+   gRPC client it needs (`@openfeature/server-sdk`, `@openfeature/flagd-provider`,
+   `@grpc/grpc-js`) and what they bring with them (`@openfeature/core`, `@openfeature/flagd-core`,
+   `json-logic-engine`, `lru-cache`, `object-hash`, `imurmurhash`, `semver`). Only `src/flags/`
+   imports OpenFeature. Any other new runtime dependency, or a framework in disguise, is a finding.
 6. **Only the ticket.** Hold the spec to the ticket as well as the diff to the spec. A criterion
    the ticket does not ask for is blocking, and goes to Martin; a change the spec does not ask
    for is blocking, and goes back to the coder.

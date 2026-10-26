@@ -16,6 +16,10 @@
 /vitest.config.ts            @mrogan
 /scripts/commit-msg.ts       @mrogan
 
+# The flag context: it reads the mark, checks the share's signature and names the preview, and is the only code that
+# may ask OpenFeature (biome.json)
+/src/flags/                  @mrogan
+
 # Intent
 /AGENTS.md                   @mrogan
 /docs/BRIEF.md               @mrogan

@@ -13,13 +13,24 @@ describe('the privacy page', () => {
       'Reporting a problem',
       'Writing to Gerald',
       'What the shop notes',
+      'Trying something new',
     ]);
   });
 
+  // Nothing unless they ask, and then only the preview cookie, which the next test names.
   it('says that nothing is kept on the visitor’s device', async () => {
     const text = textOf((await shop.get('/privacy')).body);
-    expect(text).toContain('We keep nothing on your computer or telephone.');
-    expect(text).toContain('The shop sets no cookies');
+    expect(text).toContain('We keep nothing on your computer or telephone unless you ask us to');
+    expect(text).not.toContain('The shop sets no cookies');
+  });
+
+  it('names the preview cookie: what it holds, why, how long it lasts and how to remove it', async () => {
+    const text = textOf((await shop.get('/privacy')).body);
+    expect(text).toContain('the shop keeps one cookie on your computer or telephone, called “preview”.');
+    expect(text).toContain('It holds the names of the changes you asked to try, and nothing about you');
+    expect(text).toContain('so that the next page shows them too.');
+    expect(text).toContain('It lasts a day from the last time you asked, and then your browser deletes it.');
+    expect(text).toContain("You can delete it sooner in your browser's settings.");
   });
 
   it('says where a report goes, and that it is never shown on the shop', async () => {
@@ -46,7 +57,7 @@ describe('the privacy page', () => {
     expect(tags(main, 'p').at(-1)?.text).toBe('This shop is run by Martin Rogan as a demonstration.');
     const link = tags(main, 'a').at(-1);
     expect([link?.attributes.href, link?.text]).toEqual([
-      'https://github.com/mrogan/cv-worlds-worst-website',
+      'https://github.com/the-roganator/cv-worlds-worst-website',
       'demonstration',
     ]);
   });
