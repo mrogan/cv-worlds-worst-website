@@ -17,7 +17,8 @@ describe('the privacy page', () => {
     ]);
   });
 
-  it('says that nothing is kept on the visitor’s device but the preview cookie, and only when they ask', async () => {
+  // Nothing unless they ask, and then only the preview cookie, which the next test names.
+  it('says that nothing is kept on the visitor’s device', async () => {
     const text = textOf((await shop.get('/privacy')).body);
     expect(text).toContain('We keep nothing on your computer or telephone unless you ask us to');
     expect(text).not.toContain('The shop sets no cookies');
