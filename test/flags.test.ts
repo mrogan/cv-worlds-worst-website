@@ -223,6 +223,36 @@ describe('a stale flag set', () => {
   });
 });
 
+describe('a sync that falls silent', () => {
+  it('is stale a minute after a stream should have been renewed, even when flagd ended it cleanly', async () => {
+    let now = 5_000_000;
+    flagd.set({ 'big-buttons': on });
+    const { flags, isOn } = await shop({ now: () => now });
+    flagd.end();
+    // The provider does not reconnect after a clean end, and says nothing: only the silence tells.
+    now += 60_000 + STALE_AFTER_MS - 1;
+    expect(await isOn('big-buttons')).toBe(true);
+    now += 1;
+    expect(await isOn('big-buttons')).toBe(false);
+    expect(flags.inStep()).toBe(true);
+  });
+
+  it('is not stale while each stream is renewed in its time', async () => {
+    let now = 9_000_000;
+    flagd.set({ 'big-buttons': on });
+    const before = flagd.connections();
+    const { isOn } = await shop({ now: () => now, streamMs: 100 });
+    for (let renewal = 1; renewal <= 3; renewal += 1) {
+      now += 100 + STALE_AFTER_MS - 1_000;
+      // Each stream's deadline ends it, and the provider opens another: a sign of life at the clock's time.
+      const seen = flagd.connections();
+      await vi.waitFor(() => expect(flagd.connections()).toBeGreaterThan(seen), { timeout: 5_000 });
+      await vi.waitFor(async () => expect(await isOn('big-buttons')).toBe(true));
+    }
+    expect(flagd.connections() - before).toBeGreaterThanOrEqual(4);
+  });
+});
+
 describe('the flag set’s revision', () => {
   it('is told to a marked request only', async () => {
     flagd.set({ [REVISION_FLAG]: revision('2026-10-26T08:00:00Z.3') });

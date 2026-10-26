@@ -44,6 +44,11 @@ describe('asking to preview a flag', () => {
     ]);
   });
 
+  it('keeps that answer out of any cache between', async () => {
+    expect((await ask('/?preview=big-buttons')).headers.get('cache-control')).toBe('private, no-store');
+    expect((await ask('/?preview=no-such-flag')).headers.get('cache-control')).toBeNull();
+  });
+
   it('works on any page, whatever else its address asks', async () => {
     expect(await setCookie('/products?page=2&preview=big-buttons')).toEqual([
       'preview=big-buttons; Path=/; Max-Age=86400; HttpOnly; SameSite=Lax',

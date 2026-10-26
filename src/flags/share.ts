@@ -88,10 +88,13 @@ export function shareMessage(fields: { id: string; time: string; host: string; m
  */
 export function signedId(
   req: Pick<IncomingMessage, 'headersDistinct' | 'method' | 'url'>,
-  key: KeyObject | undefined,
+  share: ShareKey | KeyObject | undefined,
   nowSeconds: number,
 ): string | undefined {
   const [id, time, signature, host] = [...SHARE_HEADERS, 'host'].map((name) => once(req.headersDistinct[name]));
+  if (id === undefined && time === undefined && signature === undefined) return;
+  // The key is read only for a request that carries an id, which only the traffic generator sends.
+  const key = share && 'current' in share ? share.current() : share;
   if (!key || id === undefined || time === undefined || signature === undefined || host === undefined) return;
   if (!VISIBLE.test(id) || !DIGITS.test(time) || !SIGNATURE.test(signature)) return;
 

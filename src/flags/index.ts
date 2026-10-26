@@ -48,6 +48,11 @@ export const REVISION_FLAG = 'flag-set-revision';
 export const REVISION_HEADER = 'x-flags-revision';
 /** How long the provider may be without flagd before every flag is off. */
 export const STALE_AFTER_MS = 60_000;
+/**
+ * How long a stream to flagd lasts before the provider opens another: each new one is a sign of life, a reconnection
+ * the provider tells as it does any other.
+ */
+const STREAM_MS = 60_000;
 
 /** A revision fit for a header: visible ASCII, not too long. */
 const REVISION = /^[\x21-\x7e]{1,128}$/;
@@ -79,6 +84,8 @@ export interface FlagsOptions {
   now?: () => number;
   /** How long to wait before syncing again when flagd drops the stream. */
   reconnectMs?: number;
+  /** How long each stream to flagd lasts. */
+  streamMs?: number;
 }
 
 let instances = 0;
@@ -88,17 +95,22 @@ export function createFlags({
   key = shareKey(undefined),
   now = Date.now,
   reconnectMs = 1_000,
+  streamMs = STREAM_MS,
 }: FlagsOptions = {}): Flags {
   const domain = `shop-${++instances}`;
   const address = sync === undefined ? undefined : syncAddress(sync);
-  const client: Client | undefined = address && start(domain, address, reconnectMs);
+  const client: Client | undefined = address && start(domain, address, reconnectMs, streamMs);
 
-  // When the provider last had a flag set from flagd, and since when it has been without one.
+  // Whether the provider has had a flag set from flagd, when it last heard from flagd, and since when it has been
+  // without it. A stream that flagd ends cleanly is not reconnected and says nothing, so silence counts too: a healthy
+  // sync reconnects every stream's length, and one silent for that and a minute more is stale.
   let synced = false;
+  let heardAt = 0;
   let lostAt: number | undefined;
   let warned = false;
   const found = () => {
     synced = true;
+    heardAt = now();
     lostAt = undefined;
     if (warned) log.info({ event: 'flags' }, 'flag set in step with flagd again');
     warned = false;
@@ -114,7 +126,9 @@ export function createFlags({
   /** Whether the flag set is fit to answer from: there is one, and flagd has not been away for a minute. */
   const fresh = (): boolean => {
     if (!client || !synced) return false;
-    if (lostAt === undefined || now() - lostAt < STALE_AFTER_MS) return true;
+    const lost = lostAt !== undefined && now() - lostAt >= STALE_AFTER_MS;
+    const silent = now() - heardAt >= streamMs + STALE_AFTER_MS;
+    if (!lost && !silent) return true;
     if (!warned) log.warn({ event: 'flags' }, 'flag set stale for a minute: every flag is off until flagd is back');
     warned = true;
     return false;
@@ -137,12 +151,14 @@ export function createFlags({
       const marked = req.headers[UNMEASURED] !== undefined;
       const cookie = previewCookie(req);
       const asked = previewAsked(url);
-      const id = signedId(req, key.current(), Math.floor(now() / 1000));
+      const id = signedId(req, key, Math.floor(now() / 1000));
 
       // An ask counts only when flagd knows every flag it names; the cookie keeps the flags flagd still knows.
       const previewing: Promise<{ preview: string[]; setCookie?: string }> = (async () => {
         if (!asked) return { preview: cookie };
-        const knows = await Promise.all([...cookie, ...asked].map(async (flag) => [flag, await known(flag)] as const));
+        const knows = await Promise.all(
+          [...new Set([...cookie, ...asked])].map(async (flag) => [flag, await known(flag)] as const),
+        );
         const knownFlags = new Set(knows.filter(([, yes]) => yes).map(([flag]) => flag));
         if (!asked.every((flag) => knownFlags.has(flag))) return { preview: cookie };
         const preview = [...new Set([...cookie.filter((flag) => knownFlags.has(flag)), ...asked])];
@@ -209,7 +225,12 @@ function syncAddress(sync: string): { host: string; port: number } | undefined {
  * (a socket, a file, TLS, another resolver) would otherwise change where the flags come from. Each is set here, to
  * what the shop means, or to `undefined` so that it does not apply.
  */
-function start(domain: string, { host, port }: { host: string; port: number }, reconnectMs: number): Client {
+function start(
+  domain: string,
+  { host, port }: { host: string; port: number },
+  reconnectMs: number,
+  streamMs: number,
+): Client {
   const options = {
     resolverType: 'in-process',
     host,
@@ -222,7 +243,7 @@ function start(domain: string, { host, port }: { host: string; port: number }, r
     defaultAuthority: undefined,
     deadlineMs: 500,
     // A fresh stream every minute, so a connection that died without a word is noticed within two.
-    streamDeadlineMs: 60_000,
+    streamDeadlineMs: streamMs,
     retryBackoffMs: reconnectMs,
     retryBackoffMaxMs: reconnectMs,
     keepAliveTime: 0,

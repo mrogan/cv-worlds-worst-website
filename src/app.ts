@@ -67,7 +67,7 @@ export function createApp({
     const revision = await flagged.revision();
     if (revision !== undefined) res.setHeader(REVISION_HEADER, revision);
     // The ask is the flag context's alone: no page, redirect or log sees it.
-    url.searchParams.delete(PREVIEW);
+    if (url.searchParams.has(PREVIEW)) url.searchParams.delete(PREVIEW);
 
     if (path === '/health') return send(req, res, { status: 200, type: JSON_TYPE, body: '{"status":"ok"}' });
     if (path === '/version') return send(req, res, { status: 200, type: JSON_TYPE, body: version });
@@ -103,7 +103,11 @@ export function createApp({
 
       routeName = route.path;
       const preview = method === 'GET' ? await flagged.previewCookie() : undefined;
-      if (preview) res.setHeader('set-cookie', preview);
+      if (preview) {
+        res.setHeader('set-cookie', preview);
+        // An answer that sets a visitor's cookie is theirs alone: no cache in between may keep it.
+        res.setHeader('cache-control', 'private, no-store');
+      }
       const rpc = getRPCMetadata(context.active());
       if (rpc?.type === RPCType.HTTP) rpc.route = path;
 

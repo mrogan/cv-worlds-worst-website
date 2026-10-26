@@ -21,6 +21,8 @@ export interface FakeFlagd {
   set(flags: Record<string, FlagdFlag>): void;
   /** How many providers have connected. */
   connections(): number;
+  /** Ends every stream cleanly, as flagd does when it shuts down gracefully, and goes on answering. */
+  end(): void;
   /** Stops answering, dropping every stream, as flagd does when it goes away. */
   stop(): Promise<void>;
   /** Answers again, on the same port. */
@@ -96,6 +98,10 @@ export async function startFlagd(initial: Record<string, FlagdFlag> = {}): Promi
       for (const stream of streams) stream.write(flags);
     },
     connections: () => connected,
+    end() {
+      for (const stream of streams) stream.end();
+      streams = new Set();
+    },
     async stop() {
       server.forceShutdown();
       streams = new Set();
