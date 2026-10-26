@@ -92,10 +92,10 @@ export function signedId(
   nowSeconds: number,
 ): string | undefined {
   const [id, time, signature, host] = [...SHARE_HEADERS, 'host'].map((name) => once(req.headersDistinct[name]));
-  if (id === undefined && time === undefined && signature === undefined) return;
-  // The key is read only for a request that carries an id, which only the traffic generator sends.
+  if (id === undefined || time === undefined || signature === undefined || host === undefined) return;
+  // The key is read only for a request that carries all three, which only the traffic generator sends.
   const key = share && 'current' in share ? share.current() : share;
-  if (!key || id === undefined || time === undefined || signature === undefined || host === undefined) return;
+  if (!key) return;
   if (!VISIBLE.test(id) || !DIGITS.test(time) || !SIGNATURE.test(signature)) return;
 
   const age = nowSeconds - Number(time);
