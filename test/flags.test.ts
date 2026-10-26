@@ -224,17 +224,41 @@ describe('a stale flag set', () => {
 });
 
 describe('a sync that falls silent', () => {
-  it('is stale a minute after a stream should have been renewed, even when flagd ended it cleanly', async () => {
+  it('is opened again when flagd ends its stream cleanly, and serves flagd’s flag set again, with no restart', async () => {
     let now = 5_000_000;
     flagd.set({ 'big-buttons': on });
-    const { flags, isOn } = await shop({ now: () => now });
-    flagd.end();
+    const { flags, isOn } = await shop({ now: () => now, watchMs: 20 });
+    const before = flagd.connections();
     // The provider does not reconnect after a clean end, and says nothing: only the silence tells.
+    flagd.end();
+    now += 60_000 + 5_000;
+    await vi.waitFor(() => expect(flagd.connections()).toBe(before + 1));
+    expect(await isOn('big-buttons')).toBe(true);
+    flagd.set({ 'big-buttons': off });
+    await vi.waitFor(async () => expect(await isOn('big-buttons')).toBe(false));
+    flagd.set({ 'big-buttons': on });
+    await vi.waitFor(async () => expect(await isOn('big-buttons')).toBe(true));
+    // Heard from again, so a minute on it is still fresh.
+    now += 60_000 + 5_000 - 1;
+    expect(await isOn('big-buttons')).toBe(true);
+    expect(flags.inStep()).toBe(true);
+  });
+
+  it('is off once silent past a stream and a minute while flagd is away, and back when flagd is', async () => {
+    let now = 7_000_000;
+    flagd.set({ 'big-buttons': on });
+    const { flags, isOn } = await shop({ now: () => now, watchMs: 20 });
+    flagd.end();
+    await flagd.stop();
     now += 60_000 + STALE_AFTER_MS - 1;
     expect(await isOn('big-buttons')).toBe(true);
     now += 1;
     expect(await isOn('big-buttons')).toBe(false);
-    expect(flags.inStep()).toBe(true);
+    // Opening it again finds flagd away, and the provider says so, and reconnects by itself.
+    await vi.waitFor(() => expect(flags.inStep()).toBe(false));
+    await flagd.restart();
+    await vi.waitFor(() => expect(flags.inStep()).toBe(true), { timeout: 10_000 });
+    expect(await isOn('big-buttons')).toBe(true);
   });
 
   it('is not stale while each stream is renewed in its time', async () => {
@@ -274,6 +298,16 @@ describe('the flag set’s revision', () => {
     opened.push({ flags: createFlags(), server: alone.server });
     expect((await fetch(`${alone.base}/flag/x`, marked)).headers.get('x-flags-revision')).toBe('none');
   });
+
+  it.each(['none', 'stale', 'invalid'])(
+    'is invalid when the revision is spelt %s, a word the header keeps',
+    async (word) => {
+      flagd.set({ [REVISION_FLAG]: revision(word) });
+      const { base } = await shop();
+      const marked = { headers: { 'x-unmeasured': '1' } };
+      expect((await fetch(`${base}/flag/x`, marked)).headers.get('x-flags-revision')).toBe('invalid');
+    },
+  );
 
   it('is invalid when it is not fit for a header', async () => {
     flagd.set({ [REVISION_FLAG]: revision('two words') });

@@ -56,6 +56,8 @@ const STREAM_MS = 60_000;
 
 /** A revision fit for a header: visible ASCII, not too long. */
 const REVISION = /^[\x21-\x7e]{1,128}$/;
+/** The words the header uses for no revision; a revision spelt as one of them is told as `invalid`. */
+const RESERVED = new Set(['none', 'stale', 'invalid']);
 
 export interface Flags {
   /** The flags for one request, from what it carries. */
@@ -86,7 +88,16 @@ export interface FlagsOptions {
   reconnectMs?: number;
   /** How long each stream to flagd lasts. */
   streamMs?: number;
+  /** How often the sync is checked for a stream that ended without a word. */
+  watchMs?: number;
 }
+
+/**
+ * How long past a stream's renewal the sync may be silent before it is opened again. The provider renews each stream
+ * when its deadline passes, and tells it; silence beyond that means flagd ended the stream cleanly, which the provider
+ * neither tells nor recovers from.
+ */
+const REOPEN_AFTER_MS = 5_000;
 
 let instances = 0;
 
@@ -96,14 +107,17 @@ export function createFlags({
   now = Date.now,
   reconnectMs = 1_000,
   streamMs = STREAM_MS,
+  watchMs = 1_000,
 }: FlagsOptions = {}): Flags {
   const domain = `shop-${++instances}`;
   const address = sync === undefined ? undefined : syncAddress(sync);
-  const client: Client | undefined = address && start(domain, address, reconnectMs, streamMs);
+  const syncing = address && start(domain, address, reconnectMs, streamMs);
+  const client: Client | undefined = syncing ? syncing.client : undefined;
 
   // Whether the provider has had a flag set from flagd, when it last heard from flagd, and since when it has been
   // without it. A stream that flagd ends cleanly is not reconnected and says nothing, so silence counts too: a healthy
-  // sync reconnects every stream's length, and one silent for that and a minute more is stale.
+  // sync reconnects every stream's length, and one silent for that and a minute more is stale. The watch below opens
+  // such a stream again.
   let synced = false;
   let heardAt = 0;
   let lostAt: number | undefined;
@@ -122,6 +136,21 @@ export function createFlags({
   client?.addHandler(ProviderEvents.ConfigurationChanged, found);
   client?.addHandler(ProviderEvents.Stale, lost);
   client?.addHandler(ProviderEvents.Error, lost);
+
+  // A stream flagd ended cleanly is opened again, on the same provider, which keeps the flag set it holds meanwhile:
+  // once per silence, and only when the provider is not already reconnecting after an error (when it has said it is
+  // stale). If flagd is away, the provider says so, and reconnects by itself from then on.
+  let reopenedFor: number | undefined;
+  const watch = syncing
+    ? setInterval(() => {
+        if (!synced || lostAt !== undefined || reopenedFor === heardAt) return;
+        if (now() - heardAt < streamMs + REOPEN_AFTER_MS) return;
+        reopenedFor = heardAt;
+        log.info({ event: 'flags' }, 'sync with flagd silent: opening it again');
+        syncing.provider.initialize().then(found, () => {});
+      }, watchMs)
+    : undefined;
+  watch?.unref();
 
   /** Whether the flag set is fit to answer from: there is one, and flagd has not been away for a minute. */
   const fresh = (): boolean => {
@@ -196,7 +225,7 @@ export function createFlags({
           if (!fresh()) return 'stale';
           try {
             const { value, errorCode } = await client.getStringDetails(REVISION_FLAG, '', await context());
-            if (errorCode === undefined) return REVISION.test(value) ? value : 'invalid';
+            if (errorCode === undefined) return REVISION.test(value) && !RESERVED.has(value) ? value : 'invalid';
             return errorCode === ErrorCode.FLAG_NOT_FOUND ? 'none' : 'invalid';
           } catch {
             return 'invalid';
@@ -206,6 +235,7 @@ export function createFlags({
     },
 
     async close() {
+      clearInterval(watch);
       if (client) await OpenFeature.setProviderAndWait(domain, NOOP_PROVIDER);
     },
   };
@@ -230,7 +260,7 @@ function start(
   { host, port }: { host: string; port: number },
   reconnectMs: number,
   streamMs: number,
-): Client {
+): { client: Client; provider: FlagdProvider } {
   const options = {
     resolverType: 'in-process',
     host,
@@ -258,7 +288,7 @@ function start(
   OpenFeature.setProvider(domain, provider);
   const client = OpenFeature.getClient(domain);
   client.setLogger(QUIET);
-  return client;
+  return { client, provider };
 }
 
 /**
