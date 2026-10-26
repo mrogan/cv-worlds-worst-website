@@ -10,6 +10,8 @@ export interface Request {
   contentType: string;
   /** An address for the client, for rate limiting only. */
   client: string;
+  /** Whether a feature flag is on for this request: off unless flagd says so (src/flags/). */
+  flag(name: string): Promise<boolean>;
 }
 
 export interface Reply {

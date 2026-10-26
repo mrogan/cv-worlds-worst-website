@@ -105,6 +105,7 @@ describe('the home page', () => {
         body: Buffer.alloc(0),
         contentType: '',
         client: 'test',
+        flag: async () => false,
       };
       for (let visit = 1; visit <= 250; visit += 1) {
         const reply = await route.handle(request);

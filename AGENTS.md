@@ -17,6 +17,7 @@ make dev                       # the shop on :8080, restarting on change
 - **Copy comes from [the brief](docs/BRIEF.md).** Anything a visitor reads is in Gerald's voice. If a line could not have come from him, it is wrong.
 - A change comes with its test. Tests use their own catalogue (`test/support/`), so they do not depend on what the shop sells.
 - Interpolate into pages only through `html` (`src/html.ts`), which escapes. What a visitor reports is never shown on any page.
+- A change behind a feature flag asks `await request.flag('name')`, which is off unless flagd says it is on. A flag's name is lower-case letters and digits in words joined by hyphens (`big-buttons`); any other is always off. Only the flag context (`src/flags/`) imports OpenFeature; flagd, not the shop, decides who sees what.
 - Commits and pull request titles are Conventional Commits. Pull requests are squash-merged; nothing is pushed to `main`.
 - `deploy/` is GitOps: Argo CD deploys what is on `main`. This repository may deploy only namespaced resources into the `website` namespace.
 - Files listed in `.github/CODEOWNERS` are the rules. Change them only when Martin asks.
