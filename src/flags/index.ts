@@ -6,7 +6,7 @@
  * port, and evaluates each request here, so no request waits on flagd. Until the first flag set arrives every flag is
  * off, and the shop serves as ever.
  *
- * Each request's evaluation context has four names, which the console's stages target with flagd's JSON Logic:
+ * Each request's evaluation context has four names, which the admin service's stages target with flagd's JSON Logic:
  *
  *   marked        true when the request carries the factory's mark, `x-unmeasured` (src/measured.ts)
  *   preview       the flags its preview cookie names (preview.ts), with any it asks for now
