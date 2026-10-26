@@ -4,7 +4,7 @@ import { page } from './layout.ts';
 
 /**
  * What the shop keeps about a visitor. Every line here must stay true: if the shop starts keeping something new,
- * this page says so in the same change.
+ * this page says so in the same change. The preview cookie is src/flags/preview.ts's.
  */
 export const privacyRoute: Route = {
   method: 'GET',
@@ -15,8 +15,8 @@ export const privacyRoute: Route = {
       path: '/privacy',
       body: html`<h1>Privacy</h1>
         <p>
-          We keep nothing on your computer or telephone. The shop sets no cookies and does not follow you about.
-          Everything on these pages comes from us and nobody else.
+          We keep nothing on your computer or telephone unless you ask us to, and then only the one cookie described
+          below. The shop does not follow you about. Everything on these pages comes from us and nobody else.
         </p>
 
         <h2>Reporting a problem</h2>
@@ -48,6 +48,17 @@ export const privacyRoute: Route = {
           down.
         </p>
         <p>Apart from reports, everything the shop notes is kept for up to 7 days.</p>
+
+        <h2>Trying something new</h2>
+        <p>
+          Now and then a change to the shop is tried out before everyone sees it. If you follow a link that asks to try
+          one, the shop keeps one cookie on your computer or telephone, called “preview”. It holds the
+          names of the changes you asked to try, and nothing about you, so that the next page shows them too.
+        </p>
+        <p>
+          It lasts a day from the last time you asked, and then your browser deletes it. You can delete it sooner in
+          your browser's settings. Without it you see the shop as everyone else does.
+        </p>
 
         <p class="quiet">
           This shop is run by Martin Rogan as a

@@ -1,10 +1,12 @@
 /**
- * The shop's HTTP handler: security headers, the routes, the files in public/, `/health` and `/version`.
+ * The shop's HTTP handler: security headers, the routes, the files in public/, `/health` and `/version`, and each
+ * request's feature flags.
  */
 import type { IncomingMessage, RequestListener, ServerResponse } from 'node:http';
 import { context } from '@opentelemetry/api';
 import { getRPCMetadata, RPCType } from '@opentelemetry/core';
 import type { Asset } from './assets.ts';
+import { createFlags, type Flags, PREVIEW, REVISION_HEADER } from './flags/index.ts';
 import { JSON_TYPE, json, matchPath, type Reply, type Request, type Route } from './http.ts';
 import { log } from './log.ts';
 import { measured } from './measured.ts';
@@ -12,6 +14,8 @@ import { measured } from './measured.ts';
 export interface AppOptions {
   /** The commit the running build was made from. */
   commit: string;
+  /** The feature flags. Without them, every flag is off. */
+  flags?: Flags;
   assets: Map<string, Asset>;
   routes: Route[];
   /** The reply when no route matches a path. */
@@ -31,7 +35,14 @@ const SECURITY_HEADERS = {
 /** Forms and reports are a few hundred bytes. Anything much larger is not for us. */
 const MAX_BODY_BYTES = 16 * 1024;
 
-export function createApp({ commit, assets, routes, notFound, failed }: AppOptions): RequestListener {
+export function createApp({
+  commit,
+  flags = createFlags(),
+  assets,
+  routes,
+  notFound,
+  failed,
+}: AppOptions): RequestListener {
   const version = JSON.stringify({ commit });
 
   return async (req, res) => {
@@ -51,6 +62,12 @@ export function createApp({ commit, assets, routes, notFound, failed }: AppOptio
     });
 
     for (const [name, value] of Object.entries(SECURITY_HEADERS)) res.setHeader(name, value);
+
+    const flagged = flags.forRequest(req, url);
+    const revision = await flagged.revision();
+    if (revision !== undefined) res.setHeader(REVISION_HEADER, revision);
+    // The ask is the flag context's alone: no page, redirect or log sees it.
+    url.searchParams.delete(PREVIEW);
 
     if (path === '/health') return send(req, res, { status: 200, type: JSON_TYPE, body: '{"status":"ok"}' });
     if (path === '/version') return send(req, res, { status: 200, type: JSON_TYPE, body: version });
@@ -72,6 +89,7 @@ export function createApp({ commit, assets, routes, notFound, failed }: AppOptio
       body: Buffer.alloc(0),
       contentType: req.headers['content-type'] ?? '',
       client: clientOf(req),
+      flag: (name) => flagged.on(name),
     };
 
     try {
@@ -84,6 +102,8 @@ export function createApp({ commit, assets, routes, notFound, failed }: AppOptio
       }
 
       routeName = route.path;
+      const preview = method === 'GET' ? await flagged.previewCookie() : undefined;
+      if (preview) res.setHeader('set-cookie', preview);
       const rpc = getRPCMetadata(context.active());
       if (rpc?.type === RPCType.HTTP) rpc.route = path;
 

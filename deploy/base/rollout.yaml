@@ -78,6 +78,20 @@ spec:
             # Every 15s rather than the default minute, so rates settle quickly.
             - name: OTEL_METRIC_EXPORT_INTERVAL
               value: "15000"
+            # flagd's sync port, from which the shop's flag context streams the flag set and evaluates each request
+            # itself (src/flags/). flagd runs in a namespace of its own, and the app's NetworkPolicy, kept in the
+            # factory's repository, lets the shop reach this port and flagd's health port and nothing else of it.
+            # Plaintext, inside the cluster. The shop serves with every flag off until it syncs.
+            - name: FLAGS_SYNC
+              value: flagd.flagd:8015
+            # The share's public key, which the factory keeps as the ConfigMap share-key. Without it no request is
+            # signed, and the shop serves as ever.
+            - name: SHARE_PUBLIC_KEY_FILE
+              value: /etc/share-key/public-key
+          volumeMounts:
+            - name: share-key
+              mountPath: /etc/share-key
+              readOnly: true
           readinessProbe:
             httpGet:
               path: /health
@@ -99,3 +113,10 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
+      volumes:
+        # Optional, so a pod starts without it; mounted whole rather than by subPath, so a key written after the pod
+        # starts reaches it, and the shop reads the file again at most once a minute.
+        - name: share-key
+          configMap:
+            name: share-key
+            optional: true

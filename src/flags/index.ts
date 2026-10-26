@@ -1,0 +1,269 @@
+/**
+ * The flag context: whether a flag is on for a request. The one module that asks OpenFeature, and the only code that
+ * may import it or flagd's provider (biome.json says so, and `make check` holds the rest of the shop to it).
+ *
+ * flagd decides; the shop asks. flagd's provider runs in-process: it holds the flag set, streamed from flagd's sync
+ * port, and evaluates each request here, so no request waits on flagd. Until the first flag set arrives every flag is
+ * off, and the shop serves as ever.
+ *
+ * Each request's evaluation context has four names, which the console's stages target with flagd's JSON Logic:
+ *
+ *   marked        true when the request carries the factory's mark, `x-unmeasured` (src/measured.ts)
+ *   preview       the flags its preview cookie names (preview.ts), with any it asks for now
+ *   targetingKey  its share id, only when the signature checks out (share.ts); absent otherwise
+ *   signed        true exactly when it has a targetingKey
+ *
+ * Off, whatever flagd says, when anything goes wrong: an error, a flag flagd does not know, a value that is not a
+ * boolean, no flag set yet, or a flag set gone stale. The provider keeps serving its last flag set while flagd is
+ * away, so a kill switch would not reach it: once it has been without flagd for a minute, every flag is off until it
+ * syncs again.
+ *
+ * The flag set's revision is a string flag of its own, `flag-set-revision`, which is not a feature. It is told only to
+ * a marked request, so the factory can see which flag set the shop holds.
+ */
+import type { IncomingMessage } from 'node:http';
+import { FlagdProvider } from '@openfeature/flagd-provider';
+import {
+  type Client,
+  ErrorCode,
+  type EvaluationContext,
+  type EvaluationDetails,
+  type Logger,
+  NOOP_PROVIDER,
+  OpenFeature,
+  ProviderEvents,
+} from '@openfeature/server-sdk';
+import { trace } from '@opentelemetry/api';
+import { log } from '../log.ts';
+import { UNMEASURED } from '../measured.ts';
+import { PREVIEW, previewAsked, previewable, previewCookie, previewSetCookie } from './preview.ts';
+import { type ShareKey, shareKey, signedId } from './share.ts';
+
+export { type ShareKey, shareKey, shareKeyFile } from './share.ts';
+export { PREVIEW };
+
+/** The flag that carries the flag set's revision. */
+export const REVISION_FLAG = 'flag-set-revision';
+/** The response header that tells a marked request the revision. */
+export const REVISION_HEADER = 'x-flags-revision';
+/** How long the provider may be without flagd before every flag is off. */
+export const STALE_AFTER_MS = 60_000;
+
+/** A revision fit for a header: visible ASCII, not too long. */
+const REVISION = /^[\x21-\x7e]{1,128}$/;
+
+export interface Flags {
+  /** The flags for one request, from what it carries. */
+  forRequest(req: IncomingMessage, url: URL): RequestFlags;
+  /** Whether the shop holds a flag set and is in step with flagd: synced, and not without it since. */
+  inStep(): boolean;
+  /** Stops the sync with flagd. */
+  close(): Promise<void>;
+}
+
+export interface RequestFlags {
+  /** Whether `flag` is on for this request. Off unless flagd says it is. */
+  on(flag: string): Promise<boolean>;
+  /** The preview cookie to set, when the request asks to preview flags flagd knows; otherwise `undefined`. */
+  previewCookie(): Promise<string | undefined>;
+  /** The flag set's revision, for a marked request only: the value, `none`, `stale` or `invalid`. */
+  revision(): Promise<string | undefined>;
+}
+
+export interface FlagsOptions {
+  /** flagd's sync address, `host:port`, plaintext. Without it there is no flag set, and every flag is off. */
+  sync?: string;
+  /** The share's public key. Without one, nothing is signed. */
+  key?: ShareKey;
+  /** The clock, in milliseconds. */
+  now?: () => number;
+  /** How long to wait before syncing again when flagd drops the stream. */
+  reconnectMs?: number;
+}
+
+let instances = 0;
+
+export function createFlags({
+  sync,
+  key = shareKey(undefined),
+  now = Date.now,
+  reconnectMs = 1_000,
+}: FlagsOptions = {}): Flags {
+  const domain = `shop-${++instances}`;
+  const address = sync === undefined ? undefined : syncAddress(sync);
+  const client: Client | undefined = address && start(domain, address, reconnectMs);
+
+  // When the provider last had a flag set from flagd, and since when it has been without one.
+  let synced = false;
+  let lostAt: number | undefined;
+  let warned = false;
+  const found = () => {
+    synced = true;
+    lostAt = undefined;
+    if (warned) log.info({ event: 'flags' }, 'flag set in step with flagd again');
+    warned = false;
+  };
+  const lost = () => {
+    lostAt ??= now();
+  };
+  client?.addHandler(ProviderEvents.Ready, found);
+  client?.addHandler(ProviderEvents.ConfigurationChanged, found);
+  client?.addHandler(ProviderEvents.Stale, lost);
+  client?.addHandler(ProviderEvents.Error, lost);
+
+  /** Whether the flag set is fit to answer from: there is one, and flagd has not been away for a minute. */
+  const fresh = (): boolean => {
+    if (!client || !synced) return false;
+    if (lostAt === undefined || now() - lostAt < STALE_AFTER_MS) return true;
+    if (!warned) log.warn({ event: 'flags' }, 'flag set stale for a minute: every flag is off until flagd is back');
+    warned = true;
+    return false;
+  };
+
+  /** Whether flagd's flag set holds `flag`, whatever its state. */
+  const known = async (flag: string): Promise<boolean> => {
+    if (!client || !fresh() || flag === REVISION_FLAG) return false;
+    const { errorCode } = await client.getBooleanDetails(flag, false, {});
+    return (
+      errorCode !== ErrorCode.FLAG_NOT_FOUND &&
+      errorCode !== ErrorCode.PROVIDER_NOT_READY &&
+      errorCode !== ErrorCode.PROVIDER_FATAL
+    );
+  };
+
+  return {
+    inStep: () => synced && lostAt === undefined,
+    forRequest(req, url) {
+      const marked = req.headers[UNMEASURED] !== undefined;
+      const cookie = previewCookie(req);
+      const asked = previewAsked(url);
+      const id = signedId(req, key.current(), Math.floor(now() / 1000));
+
+      // An ask counts only when flagd knows every flag it names; the cookie keeps the flags flagd still knows.
+      const previewing: Promise<{ preview: string[]; setCookie?: string }> = (async () => {
+        if (!asked) return { preview: cookie };
+        const knows = await Promise.all([...cookie, ...asked].map(async (flag) => [flag, await known(flag)] as const));
+        const knownFlags = new Set(knows.filter(([, yes]) => yes).map(([flag]) => flag));
+        if (!asked.every((flag) => knownFlags.has(flag))) return { preview: cookie };
+        const preview = [...new Set([...cookie.filter((flag) => knownFlags.has(flag)), ...asked])];
+        return { preview, setCookie: previewSetCookie(preview, req) };
+      })().catch(() => ({ preview: cookie }));
+
+      const context = async (): Promise<EvaluationContext> => ({
+        marked,
+        preview: (await previewing).preview,
+        signed: id !== undefined,
+        ...(id !== undefined && { targetingKey: id }),
+      });
+
+      return {
+        async on(flag) {
+          if (!client || flag === REVISION_FLAG || !previewable(flag)) return false;
+          if (!fresh()) {
+            record({ flagKey: flag, value: false, reason: 'STALE' });
+            return false;
+          }
+          try {
+            const details = await client.getBooleanDetails(flag, false, await context());
+            record(details);
+            return details.errorCode === undefined && details.value === true;
+          } catch {
+            return false;
+          }
+        },
+        async previewCookie() {
+          return (await previewing).setCookie;
+        },
+        async revision() {
+          if (!marked) return undefined;
+          if (!client || !synced) return 'none';
+          if (!fresh()) return 'stale';
+          try {
+            const { value, errorCode } = await client.getStringDetails(REVISION_FLAG, '', await context());
+            if (errorCode === undefined) return REVISION.test(value) ? value : 'invalid';
+            return errorCode === ErrorCode.FLAG_NOT_FOUND ? 'none' : 'invalid';
+          } catch {
+            return 'invalid';
+          }
+        },
+      };
+    },
+
+    async close() {
+      if (client) await OpenFeature.setProviderAndWait(domain, NOOP_PROVIDER);
+    },
+  };
+}
+
+/** `host:port`, or `undefined`, and a line in the log, when it is not one. */
+function syncAddress(sync: string): { host: string; port: number } | undefined {
+  const match = /^([a-z0-9.-]+):([0-9]{1,5})$/i.exec(sync);
+  const port = Number(match?.[2]);
+  if (match?.[1] && port > 0 && port < 65_536) return { host: match[1], port };
+  log.error({ event: 'flags' }, 'FLAGS_SYNC is not host:port, so every flag is off');
+  return undefined;
+}
+
+/**
+ * The provider, configured explicitly: it also reads FLAGD_* environment variables, and any of those set on the pod
+ * (a socket, a file, TLS, another resolver) would otherwise change where the flags come from. Each is set here, to
+ * what the shop means, or to `undefined` so that it does not apply.
+ */
+function start(domain: string, { host, port }: { host: string; port: number }, reconnectMs: number): Client {
+  const options = {
+    resolverType: 'in-process',
+    host,
+    port,
+    tls: false,
+    certPath: undefined,
+    socketPath: undefined,
+    offlineFlagSourcePath: undefined,
+    selector: undefined,
+    defaultAuthority: undefined,
+    deadlineMs: 500,
+    // A fresh stream every minute, so a connection that died without a word is noticed within two.
+    streamDeadlineMs: 60_000,
+    retryBackoffMs: reconnectMs,
+    retryBackoffMaxMs: reconnectMs,
+    keepAliveTime: 0,
+    fatalStatusCodes: [],
+    retryGracePeriod: 5,
+    // What flagd sends beside the flags is not let into the context: only the four names above are targeted.
+    contextEnricher: () => ({}),
+  } as const;
+  // The provider's types leave `undefined` out of its options, but an explicit `undefined` is what overrides the
+  // environment (it merges defaults, then FLAGD_*, then these).
+  const provider = new FlagdProvider(options as unknown as ConstructorParameters<typeof FlagdProvider>[0]);
+  OpenFeature.setProvider(domain, provider);
+  const client = OpenFeature.getClient(domain);
+  client.setLogger(QUIET);
+  return client;
+}
+
+/**
+ * OpenFeature's log, into the shop's: its messages alone, at debug, since a lost flag set is told once, above. Never
+ * the context, which can hold a share id.
+ */
+const QUIET: Logger = {
+  error: (message: unknown) => log.debug({ event: 'flags' }, String(message)),
+  warn: (message: unknown) => log.debug({ event: 'flags' }, String(message)),
+  info: () => {},
+  debug: () => {},
+};
+
+/**
+ * An evaluation, as an event on the request's span, named as OpenTelemetry's semantic conventions for feature flags
+ * name it (`feature_flag.evaluation`). Never the context: `feature_flag.context.id` would be the share id.
+ */
+function record(
+  details: Pick<EvaluationDetails<boolean>, 'flagKey' | 'value' | 'reason' | 'variant' | 'errorCode'>,
+): void {
+  trace.getActiveSpan()?.addEvent('feature_flag.evaluation', {
+    'feature_flag.key': details.flagKey,
+    'feature_flag.provider.name': 'flagd',
+    'feature_flag.result.value': details.errorCode === undefined && details.value === true,
+    ...(details.variant !== undefined && { 'feature_flag.result.variant': details.variant }),
+    ...(details.reason !== undefined && { 'feature_flag.result.reason': details.reason.toLowerCase() }),
+    ...(details.errorCode !== undefined && { 'error.type': details.errorCode.toLowerCase() }),
+  });
+}

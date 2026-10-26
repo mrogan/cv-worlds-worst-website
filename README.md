@@ -29,7 +29,7 @@ Every change after the first commit is a pull request. Once the factory is runni
 
 Gerald Mossop sells about thirty practical items from a garage in Lower Thrumble, and describes each of them honestly. [The brief](docs/BRIEF.md) says who he is and how the shop talks; every page is written from it.
 
-It is a small TypeScript app, run directly by Node 24 with no build step and no framework. Pages are rendered on the server. The catalogue is a SQLite database built into the image and opened read-only, so the shop needs no other service and holds no secrets. It keeps no data about anyone: the contact form thanks the sender and stores nothing.
+It is a small TypeScript app, run directly by Node 24 with no build step and no framework. Pages are rendered on the server. The catalogue is a SQLite database built into the image and opened read-only, and the shop holds no secrets. Its feature flags come from [flagd](https://flagd.dev), through OpenFeature, and are evaluated in the shop itself; without flagd every flag is off and the shop serves as ever. It keeps no data about anyone: the contact form thanks the sender and stores nothing, and the one thing it keeps on a visitor's device is a cookie for someone who asks to try a change before everyone sees it.
 
 It is instrumented with OpenTelemetry (a trace for every request with a span for every query, request metrics for every route, and structured logs), and every page has a "Report a problem" box. A report becomes one log record. The shop does not know the factory exists; the factory reads what the shop emits.
 
