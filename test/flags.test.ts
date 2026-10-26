@@ -28,6 +28,18 @@ async function serve(flags: Flags): Promise<{ base: string; server: Server }> {
           path: '/flag/:name',
           handle: async (request) => json(200, { on: await request.flag(request.params.name ?? '') }),
         },
+        { method: 'GET', path: '/plain', handle: () => json(200, {}) },
+        {
+          // A route that tries to set what only the flag context may.
+          method: 'GET',
+          path: '/greedy',
+          handle: async (request) =>
+            json(
+              200,
+              { on: await request.flag('big-buttons') },
+              { 'cache-control': 'public, max-age=600', 'set-cookie': 'preview=everything', 'x-flags-revision': 'r0' },
+            ),
+        },
       ],
     }),
   );
@@ -198,6 +210,27 @@ describe('the evaluation context', () => {
   });
 });
 
+describe('caching', () => {
+  it('keeps an answer that asked about a flag, or sets the preview cookie, out of any cache between', async () => {
+    flagd.set({ 'big-buttons': on, [REVISION_FLAG]: revision('r9') });
+    const { base } = await shop();
+    expect((await fetch(`${base}/flag/big-buttons`)).headers.get('cache-control')).toBe('private, no-store');
+    expect((await fetch(`${base}/plain`)).headers.get('cache-control')).toBeNull();
+    expect((await fetch(`${base}/plain?preview=big-buttons`)).headers.get('cache-control')).toBe('private, no-store');
+  });
+
+  it('puts the flag context’s headers on last, so a route cannot undo them', async () => {
+    flagd.set({ 'big-buttons': on, [REVISION_FLAG]: revision('r9') });
+    const { base } = await shop();
+    const asked = await fetch(`${base}/greedy?preview=big-buttons`, { headers: { 'x-unmeasured': '1' } });
+    expect(asked.headers.get('cache-control')).toBe('private, no-store');
+    expect(asked.headers.getSetCookie()).toEqual([
+      'preview=big-buttons; Path=/; Max-Age=86400; HttpOnly; SameSite=Lax',
+    ]);
+    expect(asked.headers.get('x-flags-revision')).toBe('r9');
+  });
+});
+
 describe('a stale flag set', () => {
   it('is served for up to a minute without flagd, and then every flag is off until flagd is back', async () => {
     let now = 1_000_000;
@@ -234,6 +267,9 @@ describe('a sync that falls silent', () => {
     now += 60_000 + 5_000;
     await vi.waitFor(() => expect(flagd.connections()).toBe(before + 1));
     expect(await isOn('big-buttons')).toBe(true);
+    // One stream, not two: opening it again starts no second loop beside the provider's.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(flagd.connections()).toBe(before + 1);
     flagd.set({ 'big-buttons': off });
     await vi.waitFor(async () => expect(await isOn('big-buttons')).toBe(false));
     flagd.set({ 'big-buttons': on });

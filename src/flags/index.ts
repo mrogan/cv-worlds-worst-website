@@ -71,8 +71,12 @@ export interface Flags {
 export interface RequestFlags {
   /** Whether `flag` is on for this request. Off unless flagd says it is. */
   on(flag: string): Promise<boolean>;
-  /** The preview cookie to set, when the request asks to preview flags flagd knows; otherwise `undefined`. */
-  previewCookie(): Promise<string | undefined>;
+  /**
+   * The headers the answer carries, after its route: the preview cookie, on a page's answer (`page`) to a request that
+   * asks to preview flags flagd knows; and, when it sets one or the route asked about any flag, `private, no-store`,
+   * since the answer then depends on the cookie, the share id or the mark, and no cache in between may keep it.
+   */
+  headers(page: boolean): Promise<Record<string, string>>;
   /** The flag set's revision, for a marked request only: the value, `none`, `stale` or `invalid`. */
   revision(): Promise<string | undefined>;
 }
@@ -140,6 +144,12 @@ export function createFlags({
   // A stream flagd ended cleanly is opened again, on the same provider, which keeps the flag set it holds meanwhile:
   // once per silence, and only when the provider is not already reconnecting after an error (when it has said it is
   // stale). If flagd is away, the provider says so, and reconnects by itself from then on.
+  //
+  // This relies on how @openfeature/flagd-provider 0.18 behaves, read from its code: initialize() opens a new stream
+  // and closes the one before (GrpcFetch.listen), runs no second reconnect loop while none is pending (none is, after a
+  // clean end, as the provider has said nothing), and resolves on the first flag set without telling Ready, hence
+  // .then(found). The tests of a silent sync fail on a provider that behaves otherwise: one that does not reopen, or
+  // opens more than one stream.
   // An attempt that flagd also ends before any flag set is tried again after as long again.
   let reopenedAt = 0;
   const silent = () => now() - Math.max(heardAt, reopenedAt) >= streamMs + REOPEN_AFTER_MS;
@@ -202,8 +212,10 @@ export function createFlags({
         ...(id !== undefined && { targetingKey: id }),
       });
 
+      let consulted = false;
       return {
         async on(flag) {
+          consulted = true;
           if (!client || flag === REVISION_FLAG || !previewable(flag)) return false;
           if (!fresh()) {
             record({ flagKey: flag, value: false, reason: 'STALE' });
@@ -217,8 +229,12 @@ export function createFlags({
             return false;
           }
         },
-        async previewCookie() {
-          return (await previewing).setCookie;
+        async headers(page) {
+          const setCookie = page ? (await previewing).setCookie : undefined;
+          return {
+            ...(setCookie && { 'set-cookie': setCookie }),
+            ...((setCookie || consulted) && { 'cache-control': 'private, no-store' }),
+          };
         },
         async revision() {
           if (!marked) return undefined;

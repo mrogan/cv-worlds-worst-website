@@ -65,12 +65,15 @@ export function createApp({
 
     const flagged = flags.forRequest(req, url);
     const revision = await flagged.revision();
-    if (revision !== undefined) res.setHeader(REVISION_HEADER, revision);
+    // The flag context's headers go on last, so no route's own can undo them.
+    const told: Record<string, string> = revision === undefined ? {} : { [REVISION_HEADER]: revision };
+    for (const [name, value] of Object.entries(told)) res.setHeader(name, value);
+    const answer = (reply: Reply, flags: Record<string, string> = {}) => send(req, res, reply, { ...told, ...flags });
     // The ask is the flag context's alone: no page, redirect or log sees it.
     if (url.searchParams.has(PREVIEW)) url.searchParams.delete(PREVIEW);
 
-    if (path === '/health') return send(req, res, { status: 200, type: JSON_TYPE, body: '{"status":"ok"}' });
-    if (path === '/version') return send(req, res, { status: 200, type: JSON_TYPE, body: version });
+    if (path === '/health') return answer({ status: 200, type: JSON_TYPE, body: '{"status":"ok"}' });
+    if (path === '/version') return answer({ status: 200, type: JSON_TYPE, body: version });
 
     const asset = method === 'GET' ? assets.get(path) : undefined;
     if (asset) {
@@ -80,7 +83,7 @@ export function createApp({
         res.writeHead(304).end();
         return;
       }
-      return send(req, res, { status: 200, type: asset.type, body: asset.body });
+      return answer({ status: 200, type: asset.type, body: asset.body });
     }
 
     const request: Request = {
@@ -96,35 +99,26 @@ export function createApp({
       const here = routes.filter((route) => matchPath(route.path, path));
       const route = here.find((candidate) => candidate.method === method);
       if (!route) {
-        if (here.length === 0) return send(req, res, notFound(request));
+        if (here.length === 0) return answer(notFound(request));
         const allow = [...new Set(here.flatMap((r) => (r.method === 'GET' ? ['GET', 'HEAD'] : [r.method])))].join(', ');
-        return send(req, res, json(405, { error: `This address only takes ${allow}.` }, { allow }));
+        return answer(json(405, { error: `This address only takes ${allow}.` }, { allow }));
       }
 
       routeName = route.path;
-      const preview = method === 'GET' ? await flagged.previewCookie() : undefined;
-      if (preview) {
-        res.setHeader('set-cookie', preview);
-        // An answer that sets a visitor's cookie is theirs alone: no cache in between may keep it.
-        res.setHeader('cache-control', 'private, no-store');
-      }
       const rpc = getRPCMetadata(context.active());
       if (rpc?.type === RPCType.HTTP) rpc.route = path;
 
       if (method === 'POST') {
         const body = await readBody(req);
-        if (!body) return send(req, res, json(413, { error: 'That is more than we can take in one go.' }));
+        if (!body) return answer(json(413, { error: 'That is more than we can take in one go.' }));
         request.body = body;
       }
       request.params = matchPath(route.path, path) ?? {};
-      send(req, res, await route.handle(request));
+      const reply = await route.handle(request);
+      answer(reply, await flagged.headers(method === 'GET'));
     } catch (error) {
       log.error({ event: 'error', err: error, method, path, route: routeName }, `${method} ${path} failed`);
-      send(
-        req,
-        res,
-        path.startsWith('/api/') ? json(500, { error: 'Something went wrong at our end.' }) : failed(request),
-      );
+      answer(path.startsWith('/api/') ? json(500, { error: 'Something went wrong at our end.' }) : failed(request));
     }
   };
 }
@@ -151,9 +145,10 @@ function clientOf(req: IncomingMessage): string {
   return last || req.socket.remoteAddress || 'unknown';
 }
 
-function send(req: IncomingMessage, res: ServerResponse, reply: Reply): void {
+function send(req: IncomingMessage, res: ServerResponse, reply: Reply, last: Record<string, string>): void {
   res.writeHead(reply.status, {
     ...reply.headers,
+    ...last,
     'content-type': reply.type,
     'content-length': Buffer.byteLength(reply.body),
   });
