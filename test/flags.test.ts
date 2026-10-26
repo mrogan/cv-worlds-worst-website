@@ -166,6 +166,17 @@ describe('the evaluation context', () => {
     expect(await isOn('big-buttons', { cookie: 'xpreview=big-buttons' })).toBe(false);
   });
 
+  it('leaves the flag set’s revision out of the preview, even when the cookie names it', async () => {
+    flagd.set({
+      'by-revision': onWhen({ in: [REVISION_FLAG, { var: 'preview' }] }),
+      'by-preview': onWhen({ in: ['big-buttons', { var: 'preview' }] }),
+    });
+    const { isOn } = await shop();
+    expect(await isOn('by-preview', { cookie: `preview=${REVISION_FLAG}.big-buttons` })).toBe(true);
+    expect(await isOn('by-revision', { cookie: `preview=${REVISION_FLAG}.big-buttons` })).toBe(false);
+    expect(await isOn('by-revision', { cookie: `preview=${REVISION_FLAG}` })).toBe(false);
+  });
+
   it('names a flag asked for on this request, so the page asked for shows it', async () => {
     flagd.set({ 'big-buttons': onWhen({ in: ['big-buttons', { var: 'preview' }] }) });
     const { base } = await shop();
@@ -278,6 +289,24 @@ describe('a sync that falls silent', () => {
     now += 60_000 + 5_000 - 1;
     expect(await isOn('big-buttons')).toBe(true);
     expect(flags.inStep()).toBe(true);
+  });
+
+  it('opens the first stream again when flagd ends it before sending any flag set', async () => {
+    let now = 4_000_000;
+    flagd.set({ 'big-buttons': on });
+    const before = flagd.connections();
+    flagd.mute(true);
+    const flags = createFlags({ sync: flagd.address, reconnectMs: 50, now: () => now, watchMs: 20 });
+    const { base, server } = await serve(flags);
+    opened.push({ flags, server });
+    await vi.waitFor(() => expect(flagd.connections()).toBe(before + 1));
+    expect(flags.inStep()).toBe(false);
+    expect(await (await fetch(`${base}/flag/big-buttons`)).json()).toEqual({ on: false });
+    flagd.mute(false);
+    now += 60_000 + 5_000;
+    await vi.waitFor(() => expect(flags.inStep()).toBe(true), { timeout: 5_000 });
+    expect(flagd.connections()).toBe(before + 2);
+    expect(await (await fetch(`${base}/flag/big-buttons`)).json()).toEqual({ on: true });
   });
 
   it('tries again when flagd ends the stream it opens again too, before sending anything', async () => {

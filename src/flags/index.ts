@@ -123,7 +123,8 @@ export function createFlags({
   // sync reconnects every stream's length, and one silent for that and a minute more is stale. The watch below opens
   // such a stream again.
   let synced = false;
-  let heardAt = 0;
+  // Counted from the start, too: a first stream flagd ends before any flag set is as silent as a later one.
+  let heardAt = now();
   let lostAt: number | undefined;
   let warned = false;
   const found = () => {
@@ -148,17 +149,22 @@ export function createFlags({
   // This relies on how @openfeature/flagd-provider 0.18 behaves, read from its code: initialize() opens a new stream
   // and closes the one before (GrpcFetch.listen), runs no second reconnect loop while none is pending (none is, after a
   // clean end, as the provider has said nothing), and resolves on the first flag set without telling Ready, hence
-  // .then(found). The tests of a silent sync fail on a provider that behaves otherwise: one that does not reopen, or
+  // the Ready told here. The tests of a silent sync fail on a provider that behaves otherwise: one that does not reopen, or
   // opens more than one stream.
   // An attempt that flagd also ends before any flag set is tried again after as long again.
   let reopenedAt = 0;
   const silent = () => now() - Math.max(heardAt, reopenedAt) >= streamMs + REOPEN_AFTER_MS;
   const watch = syncing
     ? setInterval(() => {
-        if (!synced || lostAt !== undefined || !silent()) return;
+        if (lostAt !== undefined || !silent()) return;
         reopenedAt = now();
         log.info({ event: 'flags' }, 'sync with flagd silent: opening it again');
-        syncing.provider.initialize().then(found, () => {});
+        // Told as Ready, which the provider does not tell for it: OpenFeature then counts a provider whose first
+        // stream was ended this way as ready, and the handler above counts the sync as heard.
+        syncing.provider.initialize().then(
+          () => syncing.provider.events.emit(ProviderEvents.Ready),
+          () => {},
+        );
       }, watchMs)
     : undefined;
   watch?.unref();
@@ -189,7 +195,8 @@ export function createFlags({
     inStep: () => synced && lostAt === undefined && now() - heardAt < streamMs + REOPEN_AFTER_MS,
     forRequest(req, url) {
       const marked = req.headers[UNMEASURED] !== undefined;
-      const cookie = previewCookie(req);
+      // The revision is not a feature, so a cookie that names it previews nothing by it.
+      const cookie = previewCookie(req).filter((flag) => flag !== REVISION_FLAG);
       const asked = previewAsked(url);
       const id = signedId(req, key, Math.floor(now() / 1000));
 
