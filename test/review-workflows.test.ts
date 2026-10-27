@@ -15,8 +15,19 @@ describe('the review gate and merge queue workflows', () => {
     expect(review).toMatch(/^ {2}workflow_run:\n {4}workflows: \[review requested\]\n {4}types: \[completed\]$/m);
   });
 
-  it('judges a pull request into main when it opens or moves', () => {
-    expect(review).toMatch(/^ {2}pull_request_target:\n {4}branches: \[main\]\n/m);
+  // The pinned gate judges only a `workflow_run`: started any other way, it would judge nothing, and the check would
+  // never post.
+  it('runs the gate on nothing but the helper finishing', () => {
+    const on = /^on:\n((?: .*\n|\n)*)/m.exec(review)?.[1] ?? '';
+    expect(on.match(/^ {2}[a-z_]+:/gm)).toEqual(['  workflow_run:']);
+  });
+
+  // A stacked pull request, into the branch of the one below it, needs the `review` check as one into main does.
+  it('asks for a pull request into any branch when it opens or moves', () => {
+    expect(requested).toMatch(
+      /^ {2}pull_request:\n {4}types: \[opened, reopened, synchronize, ready_for_review, edited\]$/m,
+    );
+    expect(requested).not.toMatch(/branches:|pull_request_target/);
   });
 
   // The merge queue waits for every required check on its commit: one that never runs there holds the queue.
