@@ -1,25 +1,28 @@
 # The review gate (Software Factory's ADR 0014): posts the `review` check, as the review App, on a pull request's head
 # and on the merge queue's commit for it. It passes when Martin opened the pull request, or approved its head after the
-# last push.
+# last push, whatever the pull request's base: a stacked one, into the branch below it, is held to main's required
+# checks too, and the queue's commit for one is judged on it and every pull request below it, down to main.
 #
 # The gate lives in Software Factory's repository and is called at a pinned commit, so both repositories keep one rule
 # and a change here cannot loosen it. It judges this repository's pull requests, through the API, and never checks
 # out, builds or runs their code.
 #
-# Only main's copy runs with the App's key. `pull_request_target` and `workflow_run` run this workflow as main has it,
-# and the key is in this repository's `review` environment, which only main may use. A called workflow's own triggers
-# do not apply, so the triggers are here: a review, and the merge queue, run review-requested.yml, this repository's
-# own, which holds nothing; its run starts this one, from main, through `workflow_run`, which names a workflow in the
-# same repository.
+# Only main's copy runs with the App's key. `workflow_run` runs this workflow as main has it, and the key is in this
+# repository's `review` environment, which only main may use. A called workflow's own triggers do not apply, so the
+# trigger is here: a pull request opened, pushed to, reopened, made ready or edited, a review, and the merge queue each
+# run review-requested.yml, this repository's own, which holds nothing; its run starts this one, from main, through
+# `workflow_run`, which names a workflow in the same repository. The pinned gate judges only a `workflow_run`, so this
+# workflow runs on nothing else.
+#
+# A pull request whose run of review-requested.yml GitHub holds for approval (a first-time contributor's fork, a review
+# by Copilot), or gives no secrets (Dependabot's, perhaps), has no `review` check until Martin approves the run or
+# reviews it, and waits as it would for a failing one. The pinned file's header says how each ends.
 #
 # Until the review App's key is in the `review` environment, as the secret REVIEW_APP_PRIVATE_KEY, the gate says its
 # verdict and posts nothing.
 name: review
 
 on:
-  pull_request_target:
-    branches: [main]
-    types: [opened, reopened, synchronize, ready_for_review, edited]
   workflow_run:
     workflows: [review requested]
     types: [completed]
@@ -33,7 +36,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: the-roganator/cv-software-factory/.github/workflows/review.yml@b7b9df0cd89dce75fc0db09c4893b132592eda8d # main
+    uses: the-roganator/cv-software-factory/.github/workflows/review.yml@352eccabebd7b9011d4c0c880747aa5cd2bbc494 # main
     # The called job names the `review` environment, this repository's, but a secret reaches it only when the caller
     # passes it, even one held in that environment alone. The called workflow declares the key, so it is passed by name,
     # and nothing else is.
