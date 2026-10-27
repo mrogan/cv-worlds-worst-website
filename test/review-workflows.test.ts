@@ -25,11 +25,15 @@ describe('the review gate and merge queue workflows', () => {
     expect(triggers(review).match(/^ {2}[a-z_]+:/gm)).toEqual(['  workflow_run:']);
   });
 
-  // A stacked pull request, into the branch of the one below it, needs the `review` check as one into main does.
-  it('asks for a pull request into any branch when it opens or moves', () => {
+  // The helper's run on the pull request is what starts the gate.
+  it('judges a pull request into main when it opens or moves', () => {
     expect(requested).toMatch(
       /^ {2}pull_request:\n {4}types: \[opened, reopened, synchronize, ready_for_review, edited\]$/m,
     );
+  });
+
+  // A stacked pull request, into the branch of the one below it, needs the `review` check as one into main does.
+  it('judges a pull request into any branch too', () => {
     expect(triggers(requested)).not.toMatch(/branches|paths|pull_request_target/);
   });
 
