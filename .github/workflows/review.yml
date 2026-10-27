@@ -14,6 +14,10 @@
 # `workflow_run`, which names a workflow in the same repository. The pinned gate judges only a `workflow_run`, so this
 # workflow runs on nothing else.
 #
+# A pull request whose run of review-requested.yml GitHub holds for approval (a first-time contributor's fork, a review
+# by Copilot), or gives no secrets (Dependabot's, perhaps), has no `review` check until Martin approves the run or
+# reviews it, and waits as it would for a failing one. The pinned file's header says how each ends.
+#
 # Until the review App's key is in the `review` environment, as the secret REVIEW_APP_PRIVATE_KEY, the gate says its
 # verdict and posts nothing.
 name: review

@@ -8,6 +8,10 @@ const read = (name: string) => readFileSync(new URL(`../.github/workflows/${name
 const review = read('review.yml');
 const requested = read('review-requested.yml');
 
+// A workflow's `on:` block, to the next top-level key, without its comments.
+const triggers = (workflow: string) =>
+  (/^on:\n((?:(?![a-z]).*\n)*)/m.exec(workflow)?.[1] ?? '').replace(/^\s*#.*\n/gm, '');
+
 describe('the review gate and merge queue workflows', () => {
   it('runs the gate when the helper, found by its name, finishes', () => {
     const name = /^name: (.+)$/m.exec(requested)?.[1];
@@ -18,8 +22,7 @@ describe('the review gate and merge queue workflows', () => {
   // The pinned gate judges only a `workflow_run`: started any other way, it would judge nothing, and the check would
   // never post.
   it('runs the gate on nothing but the helper finishing', () => {
-    const on = /^on:\n((?: .*\n|\n)*)/m.exec(review)?.[1] ?? '';
-    expect(on.match(/^ {2}[a-z_]+:/gm)).toEqual(['  workflow_run:']);
+    expect(triggers(review).match(/^ {2}[a-z_]+:/gm)).toEqual(['  workflow_run:']);
   });
 
   // A stacked pull request, into the branch of the one below it, needs the `review` check as one into main does.
@@ -27,7 +30,7 @@ describe('the review gate and merge queue workflows', () => {
     expect(requested).toMatch(
       /^ {2}pull_request:\n {4}types: \[opened, reopened, synchronize, ready_for_review, edited\]$/m,
     );
-    expect(requested).not.toMatch(/branches:|pull_request_target/);
+    expect(triggers(requested)).not.toMatch(/branches|paths|pull_request_target/);
   });
 
   // The merge queue waits for every required check on its commit: one that never runs there holds the queue.
