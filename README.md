@@ -38,7 +38,7 @@ It is instrumented with OpenTelemetry (a trace for every request with a span for
 You need [mise](https://mise.jdx.dev).
 
 ```sh
-mise install && pnpm install   # the pinned toolchain, dependencies and git hooks
+mise install && pnpm install   # the toolchain mise.lock holds, dependencies and git hooks
 make dev                       # the shop on http://localhost:8080
 make check                     # what CI requires: lint, types, tests, rendered manifests
 ```

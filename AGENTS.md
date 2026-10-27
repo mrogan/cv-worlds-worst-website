@@ -7,7 +7,7 @@ Everything you write here is public and part of a portfolio. Write for a thought
 ## Working here
 
 ```sh
-mise install && pnpm install   # the pinned toolchain, dependencies and git hooks
+mise install && pnpm install   # the toolchain mise.lock holds, dependencies and git hooks
 make check                     # what CI requires: lint, types, tests, rendered manifests
 make dev                       # the shop on :8080, restarting on change
 ```
@@ -22,3 +22,4 @@ make dev                       # the shop on :8080, restarting on change
 - `deploy/` is GitOps: Argo CD deploys what is on `main`. This repository may deploy only namespaced resources into the `website` namespace.
 - Files listed in `.github/CODEOWNERS` are the rules. Change them only when Martin asks.
 - pnpm installs no release younger than a day, runs no dependency's install script unless `pnpm-workspace.yaml` allows it, and refuses a provenance downgrade.
+- The toolchain moves only when someone upgrades it: `mise upgrade`, which writes `mise.lock`, and both files in a `chore(toolchain)` pull request ([`CONTRIBUTING.md`](CONTRIBUTING.md#working-on-it) says how). Dependabot does not read mise.

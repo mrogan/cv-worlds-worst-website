@@ -1,7 +1,7 @@
 {
   "name": "The World's Worst Website",
   "build": { "dockerfile": "Dockerfile" },
-  "postCreateCommand": "mise trust && mise install && pnpm install",
+  "postCreateCommand": "mise trust && mise install --locked && pnpm install",
   "forwardPorts": [8080],
   "customizations": {
     "vscode": {
