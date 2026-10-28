@@ -17,12 +17,13 @@ export function productRoute(catalogue: Catalogue): Route {
   return {
     method: 'GET',
     path: '/products/:slug',
-    handle(request) {
+    async handle(request) {
       const product = catalogue.product(request.params.slug ?? '');
       if (!product) return notFound(request);
       const others = catalogue.alsoConsidered(product);
 
       return page(200, {
+        dark: await request.flag('dark-mode'),
         title: product.name,
         path: `/products/${product.slug}`,
         body: html`<article class="product">

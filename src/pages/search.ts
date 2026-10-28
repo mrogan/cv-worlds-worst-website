@@ -8,11 +8,12 @@ export function searchRoute(catalogue: Catalogue): Route {
   return {
     method: 'GET',
     path: '/search',
-    handle({ url }) {
+    async handle({ url, flag }) {
       const query = (url.searchParams.get('q') ?? '').trim();
       const products = catalogue.search(query);
 
       return page(200, {
+        dark: await flag('dark-mode'),
         title: query ? `Search: ${query}` : 'Search',
         path: query ? `/search?${new URLSearchParams({ q: query })}` : '/search',
         body: html`<h1>Search</h1>

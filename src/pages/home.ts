@@ -8,8 +8,9 @@ export function homeRoute(catalogue: Catalogue): Route {
   return {
     method: 'GET',
     path: '/',
-    handle: () => {
+    handle: async (request) => {
       return page(200, {
+        dark: await request.flag('dark-mode'),
         title: 'Welcome',
         path: '/',
         body: html`<h1>Welcome</h1>

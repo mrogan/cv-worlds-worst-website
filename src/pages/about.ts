@@ -5,8 +5,9 @@ import { page } from './layout.ts';
 export const aboutRoute: Route = {
   method: 'GET',
   path: '/about',
-  handle: () =>
+  handle: async (request) =>
     page(200, {
+      dark: await request.flag('dark-mode'),
       title: 'About',
       path: '/about',
       body: html`<h1>About the shop</h1>

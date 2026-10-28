@@ -9,8 +9,9 @@ import { page } from './layout.ts';
 export const privacyRoute: Route = {
   method: 'GET',
   path: '/privacy',
-  handle: () =>
+  handle: async (request) =>
     page(200, {
+      dark: await request.flag('dark-mode'),
       title: 'Privacy',
       path: '/privacy',
       body: html`<h1>Privacy</h1>
