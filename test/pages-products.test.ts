@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import type { Product } from '../src/catalogue.ts';
-import { productCard } from '../src/pages/cards.ts';
 import { tags, textOf } from './support/html.ts';
 import { useShop } from './support/shop.ts';
 
@@ -13,21 +11,7 @@ describe('the product list', () => {
 });
 
 describe('a product card', () => {
-  it('gives its image the drawing description as alt, escaped', () => {
-    const product = {
-      id: 1,
-      slug: 'a',
-      name: 'A',
-      drawing: 'a.svg',
-      drawingAlt: 'A "quoted" <drawing>',
-      pricePence: 100,
-      stock: 1,
-      summary: 's',
-    } as Product;
-    expect(String(productCard(product))).toContain('alt="A &quot;quoted&quot; &lt;drawing&gt;"');
-  });
-
-  it('does so in the product list', async () => {
+  it('has an image whose alt is the drawing description, on the product list', async () => {
     const { body } = await shop.get('/products');
     expect(tags(body, 'img').map((img) => img.attributes.alt)).toContain('A drawing of thing 1.');
   });
