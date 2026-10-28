@@ -20,4 +20,6 @@ the shop is bad on purpose, and only the ticket's fault is in scope.
    imports OpenFeature. Any other new runtime dependency, or a framework in disguise, is a finding.
 6. **Only the ticket.** Hold the spec to the ticket as well as the diff to the spec. A criterion
    the ticket does not ask for is blocking, and goes to Martin; a change the spec does not ask
-   for is blocking, and goes back to the coder.
+   for is blocking, and goes back to the coder. A route that asks about a flag replies
+   `private, no-store`, whatever the flag's state: the flag context sets it (`src/flags/`), and
+   it is not a change to the page with the flag off.
