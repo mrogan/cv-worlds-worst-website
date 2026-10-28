@@ -69,9 +69,10 @@ export function createApp({
     const told: Record<string, string> =
       revision === undefined ? {} : { [REVISION_HEADER]: revision, 'cache-control': 'private, no-store' };
     for (const [name, value] of Object.entries(told)) res.setHeader(name, value);
-    // Every reply passes here, and the flag context's headers go on last, so no route's own can undo them: once
-    // anything asked about a flag, whatever the reply, it is `private, no-store`. Only a page a route served
-    // (`page`) may set the preview cookie.
+    // Every reply but a file's 304, which carries `told` alone, passes here, and the flag context's headers go on
+    // last, so no route's own can undo them: once anything asked about a flag, whatever the reply, it is
+    // `private, no-store`. Only a page a route served (`page`) may set the preview cookie. Inside the `try` below each
+    // is awaited, so a reply that cannot be sent becomes the error page.
     const answer = async (reply: Reply, page = false) =>
       send(req, res, reply, { ...told, ...(await flagged.headers(page)) });
     // The ask is the flag context's alone: no page, redirect or log sees it.
@@ -104,9 +105,9 @@ export function createApp({
       const here = routes.filter((route) => matchPath(route.path, path));
       const route = here.find((candidate) => candidate.method === method);
       if (!route) {
-        if (here.length === 0) return answer(notFound(request));
+        if (here.length === 0) return await answer(notFound(request));
         const allow = [...new Set(here.flatMap((r) => (r.method === 'GET' ? ['GET', 'HEAD'] : [r.method])))].join(', ');
-        return answer(json(405, { error: `This address only takes ${allow}.` }, { allow }));
+        return await answer(json(405, { error: `This address only takes ${allow}.` }, { allow }));
       }
 
       routeName = route.path;
@@ -115,12 +116,12 @@ export function createApp({
 
       if (method === 'POST') {
         const body = await readBody(req);
-        if (!body) return answer(json(413, { error: 'That is more than we can take in one go.' }));
+        if (!body) return await answer(json(413, { error: 'That is more than we can take in one go.' }));
         request.body = body;
       }
       request.params = matchPath(route.path, path) ?? {};
       const reply = await route.handle(request);
-      return answer(reply, method === 'GET');
+      return await answer(reply, method === 'GET');
     } catch (error) {
       log.error({ event: 'error', err: error, method, path, route: routeName }, `${method} ${path} failed`);
       return answer(

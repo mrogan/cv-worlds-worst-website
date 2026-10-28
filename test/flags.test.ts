@@ -265,6 +265,10 @@ describe('caching', () => {
     const api = await fetch(`${base}/api/broken`);
     expect(api.status).toBe(500);
     expect(api.headers.get('cache-control')).toBe('private, no-store');
+    // A failed page sets no preview cookie, even when asked to.
+    const asked = await fetch(`${base}/broken?preview=big-buttons`);
+    expect(asked.status).toBe(500);
+    expect(asked.headers.get('set-cookie')).toBeNull();
 
     // A not-found page that asks about a flag.
     const flags = createFlags({ sync: flagd.address, reconnectMs: 50 });
