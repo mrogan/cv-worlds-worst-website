@@ -65,10 +65,15 @@ export function createApp({
 
     const flagged = flags.forRequest(req, url);
     const revision = await flagged.revision();
-    // The flag context's headers go on last, so no route's own can undo them.
-    const told: Record<string, string> = revision === undefined ? {} : { [REVISION_HEADER]: revision };
+    // A marked request is told the flag set's revision, which no cache in between may keep for another.
+    const told: Record<string, string> =
+      revision === undefined ? {} : { [REVISION_HEADER]: revision, 'cache-control': 'private, no-store' };
     for (const [name, value] of Object.entries(told)) res.setHeader(name, value);
-    const answer = (reply: Reply, flags: Record<string, string> = {}) => send(req, res, reply, { ...told, ...flags });
+    // Every reply passes here, and the flag context's headers go on last, so no route's own can undo them: once
+    // anything asked about a flag, whatever the reply, it is `private, no-store`. Only a page a route served
+    // (`page`) may set the preview cookie.
+    const answer = async (reply: Reply, page = false) =>
+      send(req, res, reply, { ...told, ...(await flagged.headers(page)) });
     // The ask is the flag context's alone: no page, redirect or log sees it.
     if (url.searchParams.has(PREVIEW)) url.searchParams.delete(PREVIEW);
 
@@ -80,7 +85,7 @@ export function createApp({
       res.setHeader('etag', asset.etag);
       res.setHeader('cache-control', asset.cacheControl);
       if (req.headers['if-none-match'] === asset.etag) {
-        res.writeHead(304).end();
+        res.writeHead(304, told).end();
         return;
       }
       return answer({ status: 200, type: asset.type, body: asset.body });
@@ -115,10 +120,12 @@ export function createApp({
       }
       request.params = matchPath(route.path, path) ?? {};
       const reply = await route.handle(request);
-      answer(reply, await flagged.headers(method === 'GET'));
+      return answer(reply, method === 'GET');
     } catch (error) {
       log.error({ event: 'error', err: error, method, path, route: routeName }, `${method} ${path} failed`);
-      answer(path.startsWith('/api/') ? json(500, { error: 'Something went wrong at our end.' }) : failed(request));
+      return answer(
+        path.startsWith('/api/') ? json(500, { error: 'Something went wrong at our end.' }) : failed(request),
+      );
     }
   };
 }
