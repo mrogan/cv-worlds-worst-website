@@ -10,6 +10,13 @@ describe('the product list', () => {
   });
 });
 
+describe('a product card', () => {
+  it('has an image whose alt is the drawing description, on the product list', async () => {
+    const { body } = await shop.get('/products');
+    expect(tags(body, 'img').map((img) => img.attributes.alt)).toContain('A drawing of thing 1.');
+  });
+});
+
 describe('pages of the product list', () => {
   it('says which page this is, and links to the next', async () => {
     const { body } = await shop.get('/products');

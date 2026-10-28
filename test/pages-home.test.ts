@@ -35,6 +35,17 @@ describe('the home page', () => {
     ]);
   });
 
+  it('gives each card image the product’s drawing description as its alt', async () => {
+    const { body } = await shop.get('/');
+    const cards = body.split('<li class="card">').slice(1);
+    expect(cards.flatMap((card) => tags(card, 'img').map((img) => img.attributes.alt))).toEqual([
+      'A drawing of thing 1.',
+      'A drawing of thing 2.',
+      'A drawing of thing 3.',
+      'A drawing of thing 4.',
+    ]);
+  });
+
   it('explains how to buy, with a link to the contact page', async () => {
     const { body } = await shop.get('/');
     expect(textOf(body)).toContain('There is no basket.');

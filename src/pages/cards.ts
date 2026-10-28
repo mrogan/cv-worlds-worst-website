@@ -12,7 +12,7 @@ export function stockLine(stock: number): string {
 
 export function productCard(product: Product): Html {
   return html`<li class="card">
-    <img src="/assets/drawings/${product.drawing}" width="120" height="120">
+    <img src="/assets/drawings/${product.drawing}" alt="${product.drawingAlt}" width="120" height="120">
     <h3><a href="/products/${product.slug}">${product.name}</a></h3>
     <p class="price">${pounds(product.pricePence)}</p>
     <p>${product.summary}</p>
