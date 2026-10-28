@@ -21,9 +21,11 @@ export interface Page {
   body: Html;
   /** A script of the page's own, from public/. */
   script?: string;
+  /** Whether to link the dark stylesheet, for a visitor whose browser prefers dark colours: the dark-mode flag's. */
+  dark?: boolean;
 }
 
-export function page(status: number, { title, path, body, script }: Page): Reply {
+export function page(status: number, { title, path, body, script, dark }: Page): Reply {
   const here = path.split('?')[0];
   const document = html`<!doctype html>
 <html lang="en-GB">
@@ -31,7 +33,11 @@ export function page(status: number, { title, path, body, script }: Page): Reply
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${title} · ${SHOP}</title>
-    <link rel="stylesheet" href="/assets/site.css">
+    <link rel="stylesheet" href="/assets/site.css">${
+      dark &&
+      html`
+    <link rel="stylesheet" href="/assets/dark.css" media="(prefers-color-scheme: dark)">`
+    }
     <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
     <script src="/assets/report.js" defer></script>${
       script &&

@@ -12,12 +12,13 @@ import { page } from './layout.ts';
 
 const EMPTY: ContactForm = { name: '', email: '', message: '' };
 
-function form(status: number, values: ContactForm, errors: ContactErrors): Reply {
+function form(status: number, values: ContactForm, errors: ContactErrors, dark: boolean): Reply {
   const problem = (field: keyof ContactForm) =>
     errors[field] && html`<p class="field-error" id="${field}-error">${errors[field]}</p>`;
   const describedBy = (field: keyof ContactForm) => errors[field] && html` aria-describedby="${field}-error"`;
 
   return page(status, {
+    dark,
     title: 'Contact',
     path: '/contact',
     script: 'contact.js',
@@ -47,18 +48,19 @@ function form(status: number, values: ContactForm, errors: ContactErrors): Reply
 }
 
 export const contactRoutes: Route[] = [
-  { method: 'GET', path: '/contact', handle: () => form(200, EMPTY, {}) },
+  { method: 'GET', path: '/contact', handle: async ({ flag }) => form(200, EMPTY, {}, await flag('dark-mode')) },
   {
     method: 'POST',
     path: '/contact',
-    handle({ body }) {
+    async handle({ body, flag }) {
       const values = readContactForm(new URLSearchParams(body.toString('utf-8')));
       const errors = validateContactForm(values);
-      if (Object.keys(errors).length > 0) return form(422, EMPTY, errors);
+      if (Object.keys(errors).length > 0) return form(422, EMPTY, errors, await flag('dark-mode'));
 
       // The message goes no further than this: nothing is stored or sent, and nothing about it is logged.
       log.info({ event: 'contact' }, 'message received');
       return page(200, {
+        dark: await flag('dark-mode'),
         title: 'Thank you',
         path: '/contact',
         body: html`<h1>Thank you</h1>

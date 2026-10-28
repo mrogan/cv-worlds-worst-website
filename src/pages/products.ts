@@ -14,7 +14,7 @@ function listUrl(department: string | undefined, pageNumber: number): string {
 }
 
 export function productsRoutes(catalogue: Catalogue): Route[] {
-  function list(request: Request): Reply {
+  async function list(request: Request): Promise<Reply> {
     const slug = request.url.searchParams.get('department') ?? undefined;
     const department: Department | undefined = slug === undefined ? undefined : catalogue.department(slug);
     if (slug !== undefined && !department) return notFound(request);
@@ -24,6 +24,7 @@ export function productsRoutes(catalogue: Catalogue): Route[] {
 
     const { products, page: current, pages, total } = found;
     return page(200, {
+      dark: await request.flag('dark-mode'),
       title: department ? department.name : 'Products',
       path: listUrl(slug, current),
       body: html`<h1>${department ? department.name : 'Products'}</h1>

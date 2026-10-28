@@ -1,0 +1,21 @@
+/* The shop after dark: linked only for a browser that prefers dark colours, and only while the dark-mode flag is on. */
+
+:root {
+  --paper: #15201a;
+  --card: #1e2b23;
+  --ink: #e6efe3;
+  --quiet: #9aa89d;
+  --rule: #3a4a3f;
+  --link: #e3a77a;
+  --alert: #ff9a92;
+}
+
+/* The drawings are dark ink on transparent, so each sits on a pale panel to stay visible. */
+.card img,
+.product img {
+  background: #faf6ea;
+}
+
+.card img {
+  padding: 0.5rem;
+}

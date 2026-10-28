@@ -46,7 +46,11 @@ describe('asking to preview a flag', () => {
 
   it('keeps that answer out of any cache between', async () => {
     expect((await ask('/?preview=big-buttons')).headers.get('cache-control')).toBe('private, no-store');
-    expect((await ask('/?preview=no-such-flag')).headers.get('cache-control')).toBeNull();
+    // Every page asks dark-mode, so a page is never cached; a file asks no flag, so it is not marked private.
+    expect((await ask('/?preview=no-such-flag')).headers.get('cache-control')).toBe('private, no-store');
+    expect((await ask('/assets/site.css?preview=no-such-flag')).headers.get('cache-control')).not.toBe(
+      'private, no-store',
+    );
   });
 
   it('works on any page, whatever else its address asks', async () => {
