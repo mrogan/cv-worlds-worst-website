@@ -6,22 +6,31 @@
 import { createServer, request as httpRequest, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { createApp } from '../src/app.ts';
+import { type AppOptions, createApp } from '../src/app.ts';
 import { createFlags, type Flags, REVISION_FLAG, STALE_AFTER_MS, shareKey } from '../src/flags/index.ts';
 import { json } from '../src/http.ts';
 import { failed, notFound } from '../src/pages/index.ts';
 import { type FakeFlagd, off, on, onWhen, revision, startFlagd } from './support/flagd.ts';
 import { signed, VECTOR } from './support/share.ts';
 
-/** A shop with one route, which says whether a flag is on for the request. */
-async function serve(flags: Flags): Promise<{ base: string; server: Server }> {
+/** A shop whose routes ask about flags, one file, and the shop's own replies when no route matches or one fails. */
+async function serve(
+  flags: Flags,
+  replies: Partial<Pick<AppOptions, 'notFound'>> = {},
+): Promise<{ base: string; server: Server }> {
   const server = createServer(
     createApp({
       commit: 'test',
       flags,
-      assets: new Map(),
+      assets: new Map([
+        [
+          '/assets/site.css',
+          { body: Buffer.from('body{}'), type: 'text/css', etag: '"site"', cacheControl: 'no-cache' },
+        ],
+      ]),
       notFound,
       failed,
+      ...replies,
       routes: [
         {
           method: 'GET',
@@ -29,6 +38,23 @@ async function serve(flags: Flags): Promise<{ base: string; server: Server }> {
           handle: async (request) => json(200, { on: await request.flag(request.params.name ?? '') }),
         },
         { method: 'GET', path: '/plain', handle: () => json(200, {}) },
+        {
+          // A page and an API route that ask about a flag, and then fail.
+          method: 'GET',
+          path: '/broken',
+          handle: async (request) => {
+            await request.flag('big-buttons');
+            throw new Error('asked, then failed');
+          },
+        },
+        {
+          method: 'GET',
+          path: '/api/broken',
+          handle: async (request) => {
+            await request.flag('big-buttons');
+            throw new Error('asked, then failed');
+          },
+        },
         {
           // A route that tries to set what only the flag context may.
           method: 'GET',
@@ -228,6 +254,52 @@ describe('caching', () => {
     expect((await fetch(`${base}/flag/big-buttons`)).headers.get('cache-control')).toBe('private, no-store');
     expect((await fetch(`${base}/plain`)).headers.get('cache-control')).toBeNull();
     expect((await fetch(`${base}/plain?preview=big-buttons`)).headers.get('cache-control')).toBe('private, no-store');
+  });
+
+  it('keeps a reply out of any cache between once a flag was asked, whatever the reply', async () => {
+    flagd.set({ 'big-buttons': on });
+    const { base } = await shop();
+    const page = await fetch(`${base}/broken`);
+    expect(page.status).toBe(500);
+    expect(page.headers.get('cache-control')).toBe('private, no-store');
+    const api = await fetch(`${base}/api/broken`);
+    expect(api.status).toBe(500);
+    expect(api.headers.get('cache-control')).toBe('private, no-store');
+    // A failed page sets no preview cookie, even when asked to.
+    const asked = await fetch(`${base}/broken?preview=big-buttons`);
+    expect(asked.status).toBe(500);
+    expect(asked.headers.get('set-cookie')).toBeNull();
+
+    // A not-found page that asks about a flag.
+    const flags = createFlags({ sync: flagd.address, reconnectMs: 50 });
+    const asks = await serve(flags, {
+      notFound: (request) => {
+        void request.flag('big-buttons');
+        return notFound(request);
+      },
+    });
+    opened.push({ flags, server: asks.server });
+    const missing = await fetch(`${asks.base}/nowhere`);
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get('cache-control')).toBe('private, no-store');
+    expect((await fetch(`${base}/nowhere`)).headers.get('cache-control')).toBeNull();
+  });
+
+  it('keeps a reply that tells the flag set’s revision out of any cache between, and only that one', async () => {
+    flagd.set({ [REVISION_FLAG]: revision('r9') });
+    const { base } = await shop();
+    const marked = { headers: { 'x-unmeasured': '1' } };
+    for (const path of ['/plain', '/health', '/nowhere', '/assets/site.css']) {
+      expect((await fetch(`${base}${path}`, marked)).headers.get('cache-control')).toBe('private, no-store');
+    }
+    const unchanged = await fetch(`${base}/assets/site.css`, {
+      headers: { ...marked.headers, 'if-none-match': '"site"' },
+    });
+    expect(unchanged.status).toBe(304);
+    expect(unchanged.headers.get('cache-control')).toBe('private, no-store');
+    expect(unchanged.headers.get('x-flags-revision')).toBe('r9');
+    expect((await fetch(`${base}/plain`)).headers.get('cache-control')).toBeNull();
+    expect((await fetch(`${base}/assets/site.css`)).headers.get('cache-control')).toBe('no-cache');
   });
 
   it('puts the flag context’s headers on last, so a route cannot undo them', async () => {
