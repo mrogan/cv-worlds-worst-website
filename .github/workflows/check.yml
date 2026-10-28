@@ -64,7 +64,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # mise itself at one named release (test/toolchain.test.ts). With mise.lock beside mise.toml, the action installs
+      # with `--locked`: the versions and checksums the lock holds, and it fails when the lock has none for a request,
+      # rather than resolve that day's release.
       - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+        with:
+          version: 2026.10.17
       - run: pnpm install --frozen-lockfile
       - run: make check
 
