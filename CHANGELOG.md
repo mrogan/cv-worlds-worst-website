@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.0](https://github.com/the-roganator/cv-worlds-worst-website/compare/v0.2.1...v0.3.0) (2026-10-31)
+
+
+### Features
+
+* **flags:** ask OpenFeature whether a flag is on, from flagd's flag set held in the shop ([#108](https://github.com/the-roganator/cv-worlds-worst-website/issues/108)) ([424dea1](https://github.com/the-roganator/cv-worlds-worst-website/commit/424dea191081d7040df9f28c0f1ebcd1079893cc))
+* **pages:** a privacy page, linked from every footer ([#93](https://github.com/the-roganator/cv-worlds-worst-website/issues/93)) ([f7b9309](https://github.com/the-roganator/cv-worlds-worst-website/commit/f7b9309843cc916db2128180e73758f38d851375))
+* **pages:** follow the browser's dark colour preference ([#116](https://github.com/the-roganator/cv-worlds-worst-website/issues/116)) ([daba13e](https://github.com/the-roganator/cv-worlds-worst-website/commit/daba13ee3a2de0fbb60693a91a70b3d7185a8e77))
+
+
+### Bug Fixes
+
+* **about:** point the April camera link at /products/camera ([#95](https://github.com/the-roganator/cv-worlds-worst-website/issues/95)) ([8fe3fc4](https://github.com/the-roganator/cv-worlds-worst-website/commit/8fe3fc43f142ed6ee9cdad39420527dd487ad9ec))
+* **app:** keep every reply out of shared caches once a flag was asked, and say so ([#117](https://github.com/the-roganator/cv-worlds-worst-website/issues/117)) ([f5c6b9c](https://github.com/the-roganator/cv-worlds-worst-website/commit/f5c6b9cfadb0e7d78885206f666afd323773689a))
+* **catalogue:** start each product page at the right offset ([#78](https://github.com/the-roganator/cv-worlds-worst-website/issues/78)) ([d728dbe](https://github.com/the-roganator/cv-worlds-worst-website/commit/d728dbe2c2bf390f596a32a9e444976d91e6358b))
+* **contact:** log a request record for /contact ([#86](https://github.com/the-roganator/cv-worlds-worst-website/issues/86)) ([feb5851](https://github.com/the-roganator/cv-worlds-worst-website/commit/feb58514e65b781f2e7cd36bbc8bb69ea8d6f703))
+* **contact:** point the character counter at its status element ([#99](https://github.com/the-roganator/cv-worlds-worst-website/issues/99)) ([26c6d8b](https://github.com/the-roganator/cv-worlds-worst-website/commit/26c6d8bf54e03a882647a140bbde20582c4f0bc7))
+* **pages:** give product card images their drawing alt text ([#120](https://github.com/the-roganator/cv-worlds-worst-website/issues/120)) ([9621066](https://github.com/the-roganator/cv-worlds-worst-website/commit/96210661d51e0102dc310339e70b56977bd66037))
+* **product:** render products that have never been dusted ([#84](https://github.com/the-roganator/cv-worlds-worst-website/issues/84)) ([00b37ab](https://github.com/the-roganator/cv-worlds-worst-website/commit/00b37abfb61d112fa57b1a52f6da9c60d5ef6f44))
+
 ## [0.2.1](https://github.com/mrogan/cv-worlds-worst-website/compare/v0.2.0...v0.2.1) (2026-10-12)
 
 
