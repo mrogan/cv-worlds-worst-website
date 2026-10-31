@@ -3,7 +3,7 @@
 # The check itself lives in Software Factory's repository and is called at a pinned commit, so this repository
 # and that one keep the same rule, and a change here cannot loosen it. On the merge queue's commit, it reads the title
 # again from the pull request the queue's branch names.
-name: pr-title
+name: pr title
 
 on:
   pull_request:
