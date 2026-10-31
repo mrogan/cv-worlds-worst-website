@@ -76,6 +76,10 @@ export function createApp({
 
     for (const [name, value] of Object.entries(SECURITY_HEADERS)) res.setHeader(name, value);
 
+    // Taken before anything is awaited, so the client going at any point releases it, even while it waits its turn.
+    const turn = queues(path) ? oneAtATime() : undefined;
+    if (turn) res.once('close', () => void turn.then((release) => release()));
+
     const flagged = flags.forRequest(req, url);
     const revision = await flagged.revision();
     // A marked request is told the flag set's revision, which no cache in between may keep for another.
@@ -94,12 +98,11 @@ export function createApp({
     if (path === '/health') return answer({ status: 200, type: JSON_TYPE, body: '{"status":"ok"}' });
     if (path === '/version') return answer({ status: 200, type: JSON_TYPE, body: version });
 
-    if (queues(path)) {
-      // Released when the response has gone, or the client has, even while it is still waiting for its turn.
-      const turn = oneAtATime();
-      res.once('close', () => void turn.then((release) => release()));
+    if (turn) {
       await turn;
       await sleep(HOLD_MS);
+      // A client that gave up while it waited has nothing to answer.
+      if (res.destroyed) return;
     }
 
     const asset = method === 'GET' ? assets.get(path) : undefined;
