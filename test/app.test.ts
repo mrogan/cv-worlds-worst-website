@@ -108,4 +108,51 @@ describe('concurrency', () => {
     );
     expect(performance.now() - started).toBeLessThan(80);
   });
+
+  it('adds no fixed hold before a product page', async () => {
+    const base = await serve([{ method: 'GET', path: '/products/:slug', handle: () => page('ok') }]);
+    await fetch(`${base}/products/a`);
+    const started = performance.now();
+    await fetch(`${base}/products/a`);
+    expect(performance.now() - started).toBeLessThan(30);
+  });
+
+  it('does not make a second product page wait for an unfinished first', async () => {
+    let open = () => {};
+    const gate = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    const base = await serve([
+      {
+        method: 'GET',
+        path: '/products/:slug',
+        handle: async (request) => {
+          if (request.params.slug === 'slow') await gate;
+          return page(request.params.slug ?? '');
+        },
+      },
+    ]);
+    const slow = fetch(`${base}/products/slow`);
+    const fast = await Promise.race([
+      fetch(`${base}/products/fast`).then((res) => res.text()),
+      new Promise<string>((resolve) => setTimeout(resolve, 1000, 'blocked')),
+    ]);
+    open();
+    expect(fast).toBe('fast');
+    expect(await (await slow).text()).toBe('slow');
+  });
+
+  it('serves product pages and drawings together in about the time of one', async () => {
+    const asset: Asset = { type: 'image/svg+xml', body: Buffer.from('<svg/>'), etag: '"d"', cacheControl: 'no-cache' };
+    const base = await serve(
+      [{ method: 'GET', path: '/products/:slug', handle: () => page('page') }],
+      new Map([['/assets/drawings/a.svg', asset]]),
+    );
+    await fetch(`${base}/products/a`);
+    const started = performance.now();
+    await Promise.all(
+      Array.from({ length: 8 }, (_, n) => fetch(`${base}${n % 2 ? '/assets/drawings/a.svg' : '/products/a'}`)),
+    );
+    expect(performance.now() - started).toBeLessThan(80);
+  });
 });

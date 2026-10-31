@@ -3,7 +3,6 @@
  * request's feature flags.
  */
 import type { IncomingMessage, RequestListener, ServerResponse } from 'node:http';
-import { setTimeout as sleep } from 'node:timers/promises';
 import { context } from '@opentelemetry/api';
 import { getRPCMetadata, RPCType } from '@opentelemetry/core';
 import type { Asset } from './assets.ts';
@@ -36,17 +35,6 @@ const SECURITY_HEADERS = {
 /** Forms and reports are a few hundred bytes. Anything much larger is not for us. */
 const MAX_BODY_BYTES = 16 * 1024;
 
-/**
- * A drill for the canary (Software Factory's milestone 7, Part C), to be reverted once it has run: a product's page
- * and the catalogue's drawings wait their turn behind one lock, and hold it for at least this long, until the response
- * has gone. Alone, one is this much slower, which no probe notices, and every other page and file is served as before;
- * when visitors' browsers ask for a list's drawings at once, the next product page waits behind all of them.
- */
-const HOLD_MS = 40;
-
-/** What waits for the lock: the product pages and the drawings. */
-const queues = (path: string) => path.startsWith('/products/') || path.startsWith('/assets/drawings/');
-
 export function createApp({
   commit,
   flags = createFlags(),
@@ -56,7 +44,6 @@ export function createApp({
   failed,
 }: AppOptions): RequestListener {
   const version = JSON.stringify({ commit });
-  const oneAtATime = lock();
 
   return async (req, res) => {
     const started = performance.now();
@@ -76,10 +63,6 @@ export function createApp({
 
     for (const [name, value] of Object.entries(SECURITY_HEADERS)) res.setHeader(name, value);
 
-    // Taken before anything is awaited, so the client going at any point releases it, even while it waits its turn.
-    const turn = queues(path) ? oneAtATime() : undefined;
-    if (turn) res.once('close', () => void turn.then((release) => release()));
-
     const flagged = flags.forRequest(req, url);
     const revision = await flagged.revision();
     // A marked request is told the flag set's revision, which no cache in between may keep for another.
@@ -97,13 +80,6 @@ export function createApp({
 
     if (path === '/health') return answer({ status: 200, type: JSON_TYPE, body: '{"status":"ok"}' });
     if (path === '/version') return answer({ status: 200, type: JSON_TYPE, body: version });
-
-    if (turn) {
-      await turn;
-      await sleep(HOLD_MS);
-      // A client that gave up while it waited has nothing to answer.
-      if (res.destroyed) return;
-    }
 
     const asset = method === 'GET' ? assets.get(path) : undefined;
     if (asset) {
@@ -152,20 +128,6 @@ export function createApp({
         path.startsWith('/api/') ? json(500, { error: 'Something went wrong at our end.' }) : failed(request),
       );
     }
-  };
-}
-
-/** Gives each caller its turn once the one before has released it: awaiting it gives the function that releases it. */
-function lock(): () => Promise<() => void> {
-  let last = Promise.resolve();
-  return () => {
-    let release = () => {};
-    const held = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    const turn = last.then(() => release);
-    last = last.then(() => held);
-    return turn;
   };
 }
 
